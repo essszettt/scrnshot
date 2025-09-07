@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "name": "zxn",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${z88dk}\\include",
+                "${z88dk}\\include\\arch\\zxn",
+                "${z88dk}\\include\\_DEVELOPMENT\\sdcc"
+            ],
+            "defines": [
+                "__ZXNEXT",
+                "__SDCC",
+                "__Z80",
+                "__Z80__",
+                "__Z80N",
+                "__Z80DK",
+                "__Z80DK_NEWLIB"
+            ],
+            "windowsSdkVersion": "10.0.22000.0",
+            "compilerPath": "cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ],
+    "version": 4
+}
