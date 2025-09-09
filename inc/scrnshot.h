@@ -82,6 +82,7 @@
 /*                               Typ-Definitionen                             */
 /*============================================================================*/
 /*!
+Enumeration to describe all valid tasks of the application
 */
 typedef enum _action
 {
@@ -92,6 +93,8 @@ typedef enum _action
 } action_t;
 
 /*!
+Structure to describe a entry of the global table with all valid error codes and
+messages that can be handovered back to BASIC.
 */
 typedef struct _err_entry
 {
@@ -105,7 +108,7 @@ Structure to describe the file header of a BMP file
 typedef struct _bmpfileheader
 {
   uint16_t uiType;      /* "BM" = 0x4D42 (LE)       */
-  uint32_t uiSize;      /* Dateigröße               */
+  uint32_t uiSize;      /* Dateigroesse             */
   uint32_t uiRes;       /* 0                        */
   uint32_t uiOffBits;   /* Offset zu den Pixeldaten */
 } bmpfileheader_t;
@@ -122,8 +125,8 @@ typedef struct _bmpinfoheader
   uint16_t uiBitCount;      /* 4 bei 16 Farben (Palette)         */
   uint32_t uiCompression;   /* 0 = BI_RGB (no compression)       */
   uint32_t uiSizeImage;     /* Groesse der Bilddaten             */ 
-  int32_t  iXPelsPerMeter; /* 2835 ≈ 72 DPI                     */
-  int32_t  iYPelsPerMeter; /* 2835 ≈ 72 DPI                     */
+  int32_t  iXPelsPerMeter;  /* 2835 ≈ 72 DPI                     */
+  int32_t  iYPelsPerMeter;  /* 2835 ≈ 72 DPI                     */
   uint32_t uiClrUsed;       /* Used palette entries: 16          */
   uint32_t uiClrImportant;  /* important colors: 0               */
 } bmpinfoheader_t;
@@ -140,7 +143,7 @@ typedef struct _bmppaletteentry
 } bmppaletteentry_t;
 
 /*!
-Structure to describe a region of the RAM (i.e. pixel buffer, attribute buffer)
+Structure to describe a region of RAM (i.e. pixel buffer, attribute buffer)
 */
 typedef struct _memregion
 {
@@ -149,7 +152,7 @@ typedef struct _memregion
 } memregion_t;
 
 /*!
-Structure do descripte the properties of a videomode of Spectrum Next
+Structure to describe the properties of a videomode of Spectrum Next
 */
 typedef struct _screenmode
 {

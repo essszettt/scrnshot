@@ -47,19 +47,27 @@
 #include <arch/zxn.h>
 #include <arch/zxn/esxdos.h>
 
+#include "libzxn.h"
 #include "scrnshot.h"
 #include "version.h"
 
 /*============================================================================*/
 /*                               Defines                                      */
 /*============================================================================*/
+/*!
+Marker for the list of valid error messages, that can be returned to BASIC.
+*/
 #define END_OF_LIST (0x7FFF)
 
 /*!
 With this macro it can be controlled wether the pixel calculations should be
 done by the functions from "zxn.h" or not ...
+  - 0 = calculate pixeladdress the hard way (bit-fiddling in C)
+  - 1 = calculate pixeladdress with function from z88dk-newlib
+  - 2 = calculate pixeladdress with PIXELAD opcode
+  - 3 = calculate pixeladdress with PIXELAD and bit-fiddling
 */
-/* #define _OWN_PIXEL_CALC_ */
+#define _PIXEL_CALC_ 3
 
 /*============================================================================*/
 /*                               Namespaces                                   */
@@ -654,7 +662,7 @@ int makeScreenshot_L0(const screenmode_t* pInfo)
   if (0 != pInfo)
   {
     uint16_t uiX, uiY, uiZ;
-    uint16_t uiPalSize  = sizeof(g_tColorPalL0) /* 16 * 4  */;
+    uint16_t uiPalSize  = sizeof(g_tColorPalL0) /* 16 * 4 */;
     uint8_t  uiLineLen  = ((pInfo->uiResX >> 1) + 0x03) & 0xFC;
     uint32_t uiPxlSize  = (((uint32_t) uiLineLen) * ((uint32_t) pInfo->uiResY));
     uint8_t* pPixelData = (uint8_t*) memmap(pInfo->tMemPixel.uiAddr);
@@ -743,16 +751,24 @@ int makeScreenshot_L0(const screenmode_t* pInfo)
         /* for (uiY = 0; uiY < pInfo->uiResY; ++uiY) */
         for (uiY = pInfo->uiResY - 1; uiY != 0xFFFF; --uiY)
         {
-         #ifdef _OWN_PIXEL_CALC_
+         #if (_PIXEL_CALC_ == 0)
           pPixelRow = pPixelData
-                      + ((uiY & 0x07) << 8)   /* Zeile innerhalb der 8er-Gruppe         */
-                      + ((uiY & 0x38) << 2)   /* 8er-Gruppe innerhalb des 64er-Blocks   */
-                      + ((uiY & 0xC0) << 5);  /* welcher 64er-Block (oben/mittel/unten) */
+                      + ((uiY & 0x07) << 8)   /* Zeile innerhalb der 8er-Gruppe        */
+                      + ((uiY & 0x38) << 2)   /* 8er-Gruppe innerhalb des 64er-Blocks  */
+                      + ((uiY & 0xC0) << 5);  /* welcher 64er-Block (oben/mitte/unten) */
           pAttrRow  = pAttrData
                       + ((uiY >> 3) << 5);    /* uiY / 8 * 32 */
+         #elif (_PIXEL_CALC_ == 1)
+          pPixelRow = zx_pxy2saddr(0, uiY);           /* Pixeladresse    */
+          pAttrRow  = zx_cxy2aaddr(0, uiY >> 3);      /* Attributadresse */      
+         #elif (_PIXEL_CALC_ == 2)
+          pPixelRow = zxn_pixelad(0, (uint8_t) uiY);  /* Pixeladresse    */
+          pAttrRow  = zx_cxy2aaddr(0, uiY >> 3);      /* Attributadresse */      
+         #elif (_PIXEL_CALC_ == 3)
+          pPixelRow = zxn_pixelad(0, (uint8_t) uiY);  /* Pixeladresse    */
+          pAttrRow  = pAttrData + ((uiY >> 3) << 5);  /* Attributadresse */
          #else
-          pPixelRow = zx_pxy2saddr(0, uiY);      /* Pixelbyte-Adresse */
-          pAttrRow  = zx_cxy2aaddr(0, uiY >> 3); /* Attributadresse   */      
+          #error Invalid setting for calculation of pixel address !
          #endif
 
          #ifdef __DEBUG__
