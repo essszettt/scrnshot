@@ -16,7 +16,7 @@ Not for productive use at the moment - seems to work fine for default Spectrum v
 
 ### USAGE
 
-(./test/help.bmp)
+(test/help.bmp)
 
 ---
 
