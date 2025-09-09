@@ -18,8 +18,6 @@ Not for productive use at the moment - seems to work fine for default Spectrum v
 
 (./test/help.bmp)
 
-![](D:\projekte\zx-spectrum-next\apps\scrnshot\test\help.bmp)
-
 ---
 
 ### HISTORY
