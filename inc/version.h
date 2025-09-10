@@ -8,7 +8,7 @@
 /* --- Produktversion --- */
 #define FILE_VERSION_MAJOR    0
 #define FILE_VERSION_MINOR    0
-#define FILE_VERSION_PATCH    16
+#define FILE_VERSION_PATCH    17
 
 #define APP_VERSION_MAJOR     FILE_VERSION_MAJOR
 #define APP_VERSION_MINOR     FILE_VERSION_MINOR

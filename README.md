@@ -23,3 +23,4 @@ Not for productive use at the moment - seems to work fine for default Spectrum v
 ### HISTORY
 
 0.0.16  Usage of optimized function to calculate pixel address in video memory
+0.0.17  Second LAYER0-palette added

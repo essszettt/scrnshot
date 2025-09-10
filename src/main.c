@@ -107,6 +107,10 @@ static struct _state
   */
   bool bForce;
 
+  /*
+  */
+  uint8_t uiPalette;
+
   /*!
   Backup: Current speed of Z80
   */
@@ -174,9 +178,13 @@ const screenmode_t g_tScreenModes[] =
 /*!
 BMP color palette including all spectrum layer 0 colors.
 (https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes)
+(https://lospec.com/palette-list/zx-spectrum)
 */
-const bmppaletteentry_t g_tColorPalL0[16] =
+const bmppaletteentry_t g_tColorPalL0[] =
 {
+  /*--------------------------------------------*/
+  /* B     G     R     A                        */
+  /*--------------------------------------------*/
   {0x00, 0x00, 0x00, 0x00},   /* black          */
   {0xCE, 0x00, 0x01, 0x00},   /* blue           */
   {0x00, 0x01, 0xCF, 0x00},   /* red            */
@@ -192,8 +200,27 @@ const bmppaletteentry_t g_tColorPalL0[16] =
   {0x1C, 0xFF, 0x00, 0x00},   /* bright green   */
   {0xFF, 0xFF, 0x02, 0x00},   /* bright cyan    */
   {0x1D, 0xFF, 0xFF, 0x00},   /* bright yellow  */
-  {0xFF, 0xFF, 0xFF, 0x00}    /* bright white   */
+  {0xFF, 0xFF, 0xFF, 0x00},   /* bright white   */
+  /*--------------------------------------------*/
+  {0x00, 0x00, 0x00, 0x00},   /* black          */
+  {0xD8, 0x00, 0x00, 0x00},   /* blue           */
+  {0x00, 0x00, 0xD8, 0x00},   /* red            */
+  {0xD8, 0x00, 0xD8, 0x00},   /* magenta        */
+  {0x00, 0xD8, 0x00, 0x00},   /* green          */
+  {0xD8, 0xD8, 0x00, 0x00},   /* cyan           */
+  {0x00, 0xD8, 0xD8, 0x00},   /* yellow         */
+  {0xD8, 0xD8, 0xD8, 0x00},   /* white/grey     */
+  {0x00, 0x00, 0x00, 0x00},   /* bright black   */
+  {0xFF, 0x00, 0x00, 0x00},   /* bright blue    */
+  {0x00, 0x00, 0xFF, 0x00},   /* bright red     */
+  {0xFF, 0x00, 0xFF, 0x00},   /* bright magenta */
+  {0x00, 0xFF, 0x00, 0x00},   /* bright green   */
+  {0xFF, 0xFF, 0x00, 0x00},   /* bright cyan    */
+  {0x00, 0xFF, 0xFF, 0x00},   /* bright yellow  */
+  {0xFF, 0xFF, 0xFF, 0x00},   /* bright white   */
+  /*--------------------------------------------*/
 };
+#define PALETTES (sizeof(g_tColorPalL0) / sizeof(bmppaletteentry_t) / 16)
 
 /*!
 Table to define all textual error messages that are returned to NextOS/BASIC
@@ -327,6 +354,7 @@ void _construct(void)
   g_tState.eAction       = ACTION_NONE;
   g_tState.bQuiet        = false;
   g_tState.bForce        = false;
+  g_tState.uiPalette     = 0;
   g_tState.iExitCode     = EOK;
   g_tState.uiCpuSpeed    = ZXN_READ_REG(REG_TURBO_MODE) & 0x03;
   g_tState.bmpfile.hFile = INV_FILE_HND;
@@ -421,16 +449,15 @@ int parseArguments(int argc, char* argv[])
       {
         g_tState.bForce = true;
       }
-     #if 0
-      else if ((0 == stricmp(acArg, "-c")) || (0 == stricmp(acArg, "--count")))
+      else if ((0 == strcmp(acArg, "-p")) /* || (0 == stricmp(acArg, "--palette")) */)
       {
         if ((i + 1) < argc)
         {
-          g_tState.uiCount = strtoul(argv[i + 1], 0, 0);
+          uint8_t uiPalette = strtoul(argv[i + 1], 0, 0);
+          g_tState.uiPalette = constrain(uiPalette, 0, PALETTES - 1);
           ++i;
         }
       }
-     #endif
       else
       {
         fprintf(stderr, "unknown option: %s\n", acArg);
@@ -473,10 +500,11 @@ int showHelp(void)
 {
   printf("%s\n\n", VER_FILEDESCRIPTION_STR);
 
-  printf("%s file [-f][-q][-h][-v]\n\n", strupr(VER_INTERNALNAME_STR));
+  printf("%s file [-f][-p idx][-q][-h][-v]\n\n", strupr(VER_INTERNALNAME_STR));
   /*      0.........1.........2.........3. */
   printf(" file        pathname of file\n");
   printf(" -f[orce]    force overwrite\n");
+  printf(" -p[alette]  index of palette\n");
   printf(" -q[uiet]    print no messages\n");
   printf(" -h[elp]     print this help\n");
   printf(" -v[ersion]  print version info\n");
@@ -662,7 +690,7 @@ int makeScreenshot_L0(const screenmode_t* pInfo)
   if (0 != pInfo)
   {
     uint16_t uiX, uiY, uiZ;
-    uint16_t uiPalSize  = sizeof(g_tColorPalL0) /* 16 * 4 */;
+    uint16_t uiPalSize  = 16 * sizeof(bmppaletteentry_t) /* 16 * 4 */;
     uint8_t  uiLineLen  = ((pInfo->uiResX >> 1) + 0x03) & 0xFC;
     uint32_t uiPxlSize  = (((uint32_t) uiLineLen) * ((uint32_t) pInfo->uiResY));
     uint8_t* pPixelData = (uint8_t*) memmap(pInfo->tMemPixel.uiAddr);
@@ -721,7 +749,7 @@ int makeScreenshot_L0(const screenmode_t* pInfo)
     /* create color palette ... */
     if (EOK == iReturn)
     {
-      if (uiPalSize != esx_f_write(g_tState.bmpfile.hFile, g_tColorPalL0, uiPalSize))
+      if (uiPalSize != esx_f_write(g_tState.bmpfile.hFile, &g_tColorPalL0[g_tState.uiPalette * 16], uiPalSize))
       {
         iReturn = EBADF;
       }
