@@ -16,7 +16,7 @@ Not for productive use at the moment - seems to work fine for default Spectrum v
 
 ### USAGE
 
-(test/help.bmp)
+[](https://github.com/essszettt/scrnshot/test/help.bmp)
 
 ---
 
