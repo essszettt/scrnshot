@@ -45,6 +45,7 @@
 /*                               Defines                                      */
 /*============================================================================*/
 /*!
+With this macro the value of a variable can be limited to the given interval.
 */
 #define constrain(val, min, max) (val <= min ? min : val >= max ? max : val)
 

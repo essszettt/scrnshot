@@ -107,7 +107,8 @@ static struct _state
   */
   bool bForce;
 
-  /*
+  /*!
+  Index of the palette that will be used to create the BMP
   */
   uint8_t uiPalette;
 
@@ -225,7 +226,8 @@ const bmppaletteentry_t g_tColorPalL0[] =
 /*!
 Table to define all textual error messages that are returned to NextOS/BASIC
 */
-const err_entry_t g_tErrTable[] = {
+const errentry_t g_tErrTable[] =
+{
   {EOK,         "no error"                      "\xA0"},
   {EACCES,      "access denied"                 "\xA0"},
   {EBADF,       "bad file"                      "\xA0"},
@@ -746,7 +748,7 @@ int makeScreenshot_L0(const screenmode_t* pInfo)
       }
     }
 
-    /* create color palette ... */
+    /* Save color palette ... */
     if (EOK == iReturn)
     {
       if (uiPalSize != esx_f_write(g_tState.bmpfile.hFile, &g_tColorPalL0[g_tState.uiPalette * 16], uiPalSize))
@@ -944,7 +946,7 @@ void* memmap(uint16_t uiPhysAddr)
 /*----------------------------------------------------------------------------*/
 const unsigned char* _strerror(int iCode)
 {
-  const err_entry_t* pIndex = g_tErrTable;
+  const errentry_t* pIndex = g_tErrTable;
 
   while (END_OF_LIST != pIndex->iCode)
   {

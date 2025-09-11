@@ -96,11 +96,11 @@ typedef enum _action
 Structure to describe a entry of the global table with all valid error codes and
 messages that can be handovered back to BASIC.
 */
-typedef struct _err_entry
+typedef struct _errentry
 {
   int iCode;
   const unsigned char* acText;
-} err_entry_t;
+} errentry_t;
 
 /*!
 Structure to describe the file header of a BMP file
