@@ -6,7 +6,12 @@ This tool can be called from BASIC or the command line to take screenshots in BM
 
 The color palette is taken from Wikipedia ([Spectrum Video Modes](https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes)) and used to create screenshots in "layer 0" (default video mode).
 
-
+       _____                _____ __          __ 
+      / ___/______________ / ___// /_  ____  / /_
+      \__ \/ ___/ ___/ __ \\__ \/ __ \/ __ \/ __/
+     ___/ / /__/ /  / / / /__/ / / / / /_/ / /_  
+    /____/\___/_/  /_/ /_/____/_/ /_/\____/\__/  
+                                             
 
 Not for productive use at the moment - seems to work fine for default Spectrum video mode. Playing around with z88dk functiones to optimize pixel calculations ...
 
