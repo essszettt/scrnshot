@@ -1,4 +1,4 @@
-# scrnshot
+# SCRNSHOT
 
 Creating screenshots for ZX Spectrum Next (dot command)
 
