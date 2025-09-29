@@ -1,3 +1,6 @@
+// Need enough pages to cover main bank in logical->physical table
+#pragma output DOTN_LAST_PAGE = 11
+
 // limit the size of printf
 // #pragma printf = "%s %c %d %ld %u %lu %X %lX"
 #pragma printf = "%s %d %u"

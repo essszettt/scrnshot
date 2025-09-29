@@ -43,6 +43,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <errno.h>
+#include <intrinsic.h>
 
 #include <arch/zxn.h>
 #include <arch/zxn/esxdos.h>
@@ -157,14 +158,14 @@ Spectrum Next
 const screenmode_t g_tScreenModes[] =
 {
   /* --- LAYER 0 -------------------------------- */
-  {0x0F, 256, 192,  16,  32,  24,   2, {0x4000, 0x1800}, {0x5800, 0x0300}}, /* Layer 0 */
+  {0x00, 256, 192,  16,  32,  24,   2, {0x4000, 0x1800}, {0x5800, 0x0300}}, /* Layer 0 */
   /* --- LAYER 1 -------------------------------- */
   {0x10, 128,  96, 256,   0,   0,   0}, /* Layer 1,0 */
   {0x11, 256, 192, 256,  32,  24,   2}, /* Layer 1,1 */
   {0x12, 512, 192, 256,   0,   0,   0}, /* Layer 1,2 */
   {0x13, 256, 192, 256,  32, 192,   2}, /* Layer 1,3 */
   /* --- LAYER 2 -------------------------------- */
-  {0x2F, 256, 192, 256,   0,   0,   0, {0x4000, 0xC000}, {0x0000, 0x0000}}, /* Layer 2 */
+  {0x20, 256, 192, 256,   0,   0,   0, {0x4000, 0xC000}, {0x0000, 0x0000}}, /* Layer 2 */
   {0x22, 320, 256, 256,   0,   0,   0}, /* Layer 2,2 */
   {0x23, 640, 256,  16,   0,   0,   0}, /* Layer 2,3 */
   /* --- LAYER 3 -------------------------------- */
@@ -301,22 +302,62 @@ int makeScreenshot(void);
 /*!
 Reading the video memory and transcode it to BMP data for LAYER 0
 */
-static int makeScreenshot_L0(const screenmode_t* pInfo);
+static int makeScreenshot_L00(const screenmode_t* pInfo);
 
 /*!
-Reading the video memory and transcode it to BMP data for LAYER 1
+Reading the video memory and transcode it to BMP data for LAYER 1,0
 */
-static int makeScreenshot_L1(const screenmode_t* pInfo);
+static int makeScreenshot_L10(const screenmode_t* pInfo);
+
+/*!
+Reading the video memory and transcode it to BMP data for LAYER 1,1
+*/
+static int makeScreenshot_L11(const screenmode_t* pInfo);
+
+/*!
+Reading the video memory and transcode it to BMP data for LAYER 1,2
+*/
+static int makeScreenshot_L12(const screenmode_t* pInfo);
+
+/*!
+Reading the video memory and transcode it to BMP data for LAYER 1,3
+*/
+static int makeScreenshot_L13(const screenmode_t* pInfo);
 
 /*!
 Reading the video memory and transcode it to BMP data for LAYER 2
 */
-static int makeScreenshot_L2(const screenmode_t* pInfo);
+static int makeScreenshot_L20(const screenmode_t* pInfo);
 
 /*!
-Reading the video memory and transcode it to BMP data for LAYER 3
+Reading the video memory and transcode it to BMP data for LAYER 2,2
 */
-static int makeScreenshot_L3(const screenmode_t* pInfo);
+static int makeScreenshot_L22(const screenmode_t* pInfo);
+
+/*!
+Reading the video memory and transcode it to BMP data for LAYER 2,3
+*/
+static int makeScreenshot_L23(const screenmode_t* pInfo);
+
+/*!
+Reading the video memory and transcode it to BMP data for LAYER 3,0
+*/
+static int makeScreenshot_L30(const screenmode_t* pInfo);
+
+/*!
+Reading the video memory and transcode it to BMP data for LAYER 3,1
+*/
+static int makeScreenshot_L31(const screenmode_t* pInfo);
+
+/*!
+Reading the video memory and transcode it to BMP data for LAYER 3,2
+*/
+static int makeScreenshot_L32(const screenmode_t* pInfo);
+
+/*!
+Reading the video memory and transcode it to BMP data for LAYER 3,3
+*/
+static int makeScreenshot_L33(const screenmode_t* pInfo);
 
 /*!
 This function tries to detect the current screen mode (layer 0, layer 1, ...)
@@ -400,17 +441,20 @@ int main(int argc, char* argv[])
         g_tState.iExitCode = EOK;
         break;
 
-      case ACTION_INFO:
-        g_tState.iExitCode = showInfo();
-        break;
-
       case ACTION_HELP:
         g_tState.iExitCode = showHelp();
+        break;
+
+      case ACTION_INFO:
+        g_tState.iExitCode = showInfo();
         break;
 
       case ACTION_SHOT:
         g_tState.iExitCode = makeScreenshot();
         break;
+
+      default:
+        g_tState.iExitCode = ESTAT;
     }
   }
 
@@ -537,14 +581,25 @@ int makeScreenshot(void)
   int iReturn = EOK;
 
   uint8_t uiMode = detectScreenMode();
-  const screenmode_t* pInfo  = getScreenModeInfo(uiMode);
+  const screenmode_t* pInfo = getScreenModeInfo(uiMode);
+
+ #ifdef __DEBUG__
+  if (0 != pInfo)
+  {
+    printf("makeScreenshot() - mode: 0x%02X resolution: %dx%d colours: %u\n",
+           uiMode,
+           pInfo->uiResX,
+           pInfo->uiResY,
+           pInfo->uiColors);
+  }
+  else
+  {
+    printf("makeScreenshot() - Unable to detect screen mode\n");
+  }
+ #endif
 
   if (EOK == iReturn)
   {
-   #ifdef __DEBUG__
-    printf("makeScreenshot() - Check name <%s> ..\n", g_tState.bmpfile.acPathName);
-   #endif
-
     /* Is argument a directory ? */
     if (INV_FILE_HND != (g_tState.bmpfile.hFile = esx_f_opendir(g_tState.bmpfile.acPathName)))
     {
@@ -560,10 +615,6 @@ int makeScreenshot(void)
                  "%s" ESX_DIR_SEP VER_INTERNALNAME_STR "-%u.bmp",
                  g_tState.bmpfile.acPathName,
                  uiIndex);
-
-       #ifdef __DEBUG__
-        printf("makeScreenshot() - trying <%s> ...\n", acPathName);
-       #endif
 
         if (INV_FILE_HND == (g_tState.bmpfile.hFile = esx_f_open(acPathName, ESXDOS_MODE_R | ESXDOS_MODE_OE)))
         {
@@ -586,15 +637,7 @@ int makeScreenshot(void)
     }
     else /* Argument is a file ... */
     {
-     #ifdef __DEBUG__
-      printf("makeScreenshot() - trying <%s> ...\n", g_tState.bmpfile.acPathName);
-     #endif
-
       g_tState.bmpfile.hFile = esx_f_open(g_tState.bmpfile.acPathName, ESXDOS_MODE_R | ESXDOS_MODE_OE);
-
-     #ifdef __DEBUG__
-      printf("makeScreenshot() - esx_f_open = %d\n", g_tState.bmpfile.hFile);
-     #endif
 
       if (INV_FILE_HND != g_tState.bmpfile.hFile)
       {
@@ -619,12 +662,27 @@ int makeScreenshot(void)
 
     if (INV_FILE_HND == g_tState.bmpfile.hFile)
     {
-     #ifdef __DEBUG__
-      printf("makeScreenshot() - unable to open file <%s>\n", g_tState.bmpfile.acPathName);
-     #endif
-
       iReturn = EACCES; /* Error */
     }
+  }
+
+  if (EOK == iReturn)
+  {
+    /* prepare BMP file header */
+    g_tState.bmpfile.tFileHdr.uiType      = 0x4D42;                             /* 'BM' (LE!) */
+    g_tState.bmpfile.tFileHdr.uiSize      = sizeof(g_tState.bmpfile.tFileHdr);  /* file size  */
+    g_tState.bmpfile.tFileHdr.uiSize     += sizeof(g_tState.bmpfile.tInfoHdr);
+    g_tState.bmpfile.tFileHdr.uiRes       = 0;                                  /* reserved   */
+    g_tState.bmpfile.tFileHdr.uiOffBits   = sizeof(g_tState.bmpfile.tFileHdr);  /* off bits   */
+    g_tState.bmpfile.tFileHdr.uiOffBits  += sizeof(g_tState.bmpfile.tInfoHdr);
+
+    /* prepare BMP info header  */
+    g_tState.bmpfile.tInfoHdr.uiSize         = sizeof(g_tState.bmpfile.tInfoHdr); /* header size     */
+    g_tState.bmpfile.tInfoHdr.uiPlanes       = 1;                                 /* only one layer  */
+    g_tState.bmpfile.tInfoHdr.uiCompression  = 0;                                 /* BI_RGB          */
+    g_tState.bmpfile.tInfoHdr.iXPelsPerMeter = BMP_DPI_72;                        /* 72 DPI          */
+    g_tState.bmpfile.tInfoHdr.iYPelsPerMeter = BMP_DPI_72;                        /* 72 DPI          */
+    g_tState.bmpfile.tInfoHdr.uiClrImportant = 0;                                 /* all colors used */
   }
 
   if (EOK == iReturn)
@@ -632,31 +690,47 @@ int makeScreenshot(void)
     switch (uiMode)
     {
       /* LAYER 0 */
-      case 0x0F: 
-        iReturn = makeScreenshot_L0(pInfo);
+      case 0x00: 
+        iReturn = makeScreenshot_L00(pInfo);
         break;
 
       /* LAYER 1 */
       case 0x10:
+        iReturn = makeScreenshot_L10(pInfo);
+        break;
       case 0x11:
+        iReturn = makeScreenshot_L11(pInfo);
+        break;
       case 0x12:
+        iReturn = makeScreenshot_L12(pInfo);
+        break;
       case 0x13:
-        iReturn = makeScreenshot_L1(pInfo);
+        iReturn = makeScreenshot_L13(pInfo);
         break;
 
       /* LAYER 2 */
-      case 0x2F:
+      case 0x20:
+        iReturn = makeScreenshot_L20(pInfo);
+        break;
       case 0x22:
+        iReturn = makeScreenshot_L22(pInfo);
+        break;
       case 0x23:
-        iReturn = makeScreenshot_L2(pInfo);
+        iReturn = makeScreenshot_L23(pInfo);
         break;
 
       /* LAYER 3 */
       case 0x30:
+        iReturn = makeScreenshot_L30(pInfo);
+        break;
       case 0x31:
+        iReturn = makeScreenshot_L31(pInfo);
+        break;
       case 0x32:
+        iReturn = makeScreenshot_L32(pInfo);
+        break;
       case 0x33:
-        iReturn = makeScreenshot_L3(pInfo);
+        iReturn = makeScreenshot_L33(pInfo);
         break;
 
       default:
@@ -683,9 +757,9 @@ int makeScreenshot(void)
 
 
 /*----------------------------------------------------------------------------*/
-/* makeScreenshot_L0()                                                        */
+/* makeScreenshot_L00()                                                       */
 /*----------------------------------------------------------------------------*/
-int makeScreenshot_L0(const screenmode_t* pInfo)
+int makeScreenshot_L00(const screenmode_t* pInfo)
 {
   int iReturn = EOK;
 
@@ -700,26 +774,12 @@ int makeScreenshot_L0(const screenmode_t* pInfo)
     uint8_t* pPixelRow  = 0;
     uint8_t* pAttrRow   = 0;
 
-   #ifdef __DEBUG__
-    printf("makeScreenshot_L0() - resolution: %dx%d (%u:%u)\n",
-           pInfo->uiResX,
-           pInfo->uiResY,
-           pInfo->tMemPixel.uiAddr,
-           pInfo->tMemAttr.uiAddr);
-   #endif
-
     /* create file header ... */
     if (EOK == iReturn)
     {
-      g_tState.bmpfile.tFileHdr.uiType      = 0x4D42;                             /* 'BM' (LE!) */
-      g_tState.bmpfile.tFileHdr.uiSize      = sizeof(g_tState.bmpfile.tFileHdr);  /* file size  */
-      g_tState.bmpfile.tFileHdr.uiSize     += sizeof(g_tState.bmpfile.tInfoHdr);
-      g_tState.bmpfile.tFileHdr.uiSize     += uiPalSize;
-      g_tState.bmpfile.tFileHdr.uiSize     += uiPxlSize;
-      g_tState.bmpfile.tFileHdr.uiRes       = 0;                                  /* reserved   */
-      g_tState.bmpfile.tFileHdr.uiOffBits   = sizeof(g_tState.bmpfile.tFileHdr);  /* off bits   */
-      g_tState.bmpfile.tFileHdr.uiOffBits  += sizeof(g_tState.bmpfile.tInfoHdr);
-      g_tState.bmpfile.tFileHdr.uiOffBits  += uiPalSize;
+      g_tState.bmpfile.tFileHdr.uiSize    += uiPalSize;
+      g_tState.bmpfile.tFileHdr.uiSize    += uiPxlSize;
+      g_tState.bmpfile.tFileHdr.uiOffBits += uiPalSize;
 
       if (sizeof(g_tState.bmpfile.tFileHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tFileHdr, sizeof(g_tState.bmpfile.tFileHdr)))
       {
@@ -730,17 +790,11 @@ int makeScreenshot_L0(const screenmode_t* pInfo)
     /* create info header ... */
     if (EOK == iReturn)
     {
-      g_tState.bmpfile.tInfoHdr.uiSize         = sizeof(g_tState.bmpfile.tInfoHdr);     /* header size     */
       g_tState.bmpfile.tInfoHdr.iWidth         = pInfo->uiResX;                         /* image width     */
       g_tState.bmpfile.tInfoHdr.iHeight        = pInfo->uiResY;                         /* image height    */
-      g_tState.bmpfile.tInfoHdr.uiPlanes       = 1;                                     /* only one layer  */
       g_tState.bmpfile.tInfoHdr.uiBitCount     = 4;                                     /* bits per pixel  */
-      g_tState.bmpfile.tInfoHdr.uiCompression  = 0;                                     /* BI_RGB          */
       g_tState.bmpfile.tInfoHdr.uiSizeImage    = pInfo->uiResY * uiLineLen;             /* image size      */
-      g_tState.bmpfile.tInfoHdr.iXPelsPerMeter = BMP_DPI_72;                            /* 72 DPI          */
-      g_tState.bmpfile.tInfoHdr.iYPelsPerMeter = BMP_DPI_72;                            /* 72 DPI          */
       g_tState.bmpfile.tInfoHdr.uiClrUsed      = uiPalSize / sizeof(bmppaletteentry_t); /* palette entries */
-      g_tState.bmpfile.tInfoHdr.uiClrImportant = 0;                                     /* all colors used */
 
       if (sizeof(g_tState.bmpfile.tInfoHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tInfoHdr, sizeof(g_tState.bmpfile.tInfoHdr)))
       {
@@ -861,9 +915,9 @@ int makeScreenshot_L0(const screenmode_t* pInfo)
 
 
 /*----------------------------------------------------------------------------*/
-/* makeScreenshot_L1()                                                        */
+/* makeScreenshot_L10()                                                       */
 /*----------------------------------------------------------------------------*/
-int makeScreenshot_L1(const screenmode_t* pInfo)
+int makeScreenshot_L10(const screenmode_t* pInfo)
 {
   pInfo = pInfo; /* to make the compiler happy */
   return ENOTSUP;
@@ -871,9 +925,9 @@ int makeScreenshot_L1(const screenmode_t* pInfo)
 
 
 /*----------------------------------------------------------------------------*/
-/* makeScreenshot_L2()                                                        */
+/* makeScreenshot_L11()                                                       */
 /*----------------------------------------------------------------------------*/
-int makeScreenshot_L2(const screenmode_t* pInfo)
+int makeScreenshot_L11(const screenmode_t* pInfo)
 {
   pInfo = pInfo; /* to make the compiler happy */
   return ENOTSUP;
@@ -881,9 +935,201 @@ int makeScreenshot_L2(const screenmode_t* pInfo)
 
 
 /*----------------------------------------------------------------------------*/
-/* makeScreenshot_L3()                                                        */
+/* makeScreenshot_L12()                                                       */
 /*----------------------------------------------------------------------------*/
-int makeScreenshot_L3(const screenmode_t* pInfo)
+int makeScreenshot_L12(const screenmode_t* pInfo)
+{
+  pInfo = pInfo; /* to make the compiler happy */
+  return ENOTSUP;
+}
+
+
+/*----------------------------------------------------------------------------*/
+/* makeScreenshot_L13()                                                       */
+/*----------------------------------------------------------------------------*/
+int makeScreenshot_L13(const screenmode_t* pInfo)
+{
+  pInfo = pInfo; /* to make the compiler happy */
+  return ENOTSUP;
+}
+
+
+/*----------------------------------------------------------------------------*/
+/* makeScreenshot_L20()                                                       */
+/*----------------------------------------------------------------------------*/
+int makeScreenshot_L20(const screenmode_t* pInfo)
+{
+  int iReturn = EOK;
+
+  if (0 != pInfo)
+  {
+    uint16_t uiPalSize  = pInfo->uiColors * sizeof(bmppaletteentry_t);
+    uint16_t uiLineLen  = pInfo->uiResX /* 32bit aligned */;
+    uint32_t uiPxlSize  = (((uint32_t) uiLineLen) * ((uint32_t) pInfo->uiResY));
+    uint8_t* pPixelRow  = 0;
+
+    /* create file header ... */
+    if (EOK == iReturn)
+    {
+      g_tState.bmpfile.tFileHdr.uiSize    += uiPalSize;
+      g_tState.bmpfile.tFileHdr.uiSize    += uiPxlSize;
+      g_tState.bmpfile.tFileHdr.uiOffBits += uiPalSize;
+
+      if (sizeof(g_tState.bmpfile.tFileHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tFileHdr, sizeof(g_tState.bmpfile.tFileHdr)))
+      {
+        iReturn = EBADF;
+      }
+    }
+
+    /* create info header ... */
+    if (EOK == iReturn)
+    {
+      g_tState.bmpfile.tInfoHdr.iWidth         = pInfo->uiResX;                         /* image width     */
+      g_tState.bmpfile.tInfoHdr.iHeight        = pInfo->uiResY;                         /* image height    */
+      g_tState.bmpfile.tInfoHdr.uiBitCount     = 8;                                     /* bits per pixel  */
+      g_tState.bmpfile.tInfoHdr.uiSizeImage    = pInfo->uiResY * uiLineLen;             /* image size      */
+      g_tState.bmpfile.tInfoHdr.uiClrUsed      = uiPalSize / sizeof(bmppaletteentry_t); /* palette entries */
+
+      if (sizeof(g_tState.bmpfile.tInfoHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tInfoHdr, sizeof(g_tState.bmpfile.tInfoHdr)))
+      {
+        iReturn = EBADF;
+      }
+    }
+
+    /* save color palette ... */
+    if (EOK == iReturn)
+    {
+      bmppaletteentry_t tEntry;
+      tEntry.a = 0;
+
+      for (uint8_t uiR = 0; uiR < 8; ++uiR)
+      {
+        for (uint8_t uiG = 0; uiG < 8; ++uiG)
+        {
+          for (uint8_t uiB = 0; uiB < 4; ++uiB)
+          {
+           #if 0
+            tEntry.r = (uiR * 255 + 3) / 7;   // oder Bit-Replikation
+            tEntry.g = (uiG * 255 + 3) / 7;
+            tEntry.b = (uiB * 255 + 1) / 3;
+           #else
+            tEntry.r = (uiR << 5) | (uiR << 2) | (uiR >> 1);
+            tEntry.g = (uiG << 5) | (uiG << 2) | (uiG >> 1);
+            tEntry.b = (uiB << 6) | (uiB << 4) | (uiB << 2) | uiB;
+           #endif
+
+            if (sizeof(tEntry) != esx_f_write(g_tState.bmpfile.hFile, &tEntry, sizeof(tEntry)))
+            {
+              iReturn = EBADF;
+            }
+          }
+        }
+      }
+    }
+
+    /* write pixel data ... */
+    if (EOK == iReturn)
+    {
+      uint8_t  uiMMU2 = 0xFF;
+      uint8_t  uiPhysBank; /* 8K bank */
+      uint16_t uiPhysBank_ = 0xFFFF;
+      uint32_t uiPhysBase;
+      uint32_t uiPhysAddr;
+
+      uiPhysBank = ZXN_READ_REG(0x12) << 1; /* 0x12 L2.ACTIVE.RAM.BANK | 16K bank => 8K bank*/
+      uiPhysBase = UINT32_C(0x2000) * ((uint32_t) uiPhysBank);  
+
+      intrinsic_di();
+      uiMMU2 = ZXN_READ_MMU2();
+
+      for (uint16_t uiY = pInfo->uiResY - 1; uiY != 0xFFFF; --uiY)
+      {
+        uiPhysAddr = uiPhysBase + (((uint32_t) uiY) * ((uint32_t) pInfo->uiResX));
+        uiPhysBank = (uiPhysAddr >> 13) & 0xFF;
+
+        if (uiPhysBank_ != ((uint16_t) uiPhysBank))
+        {
+          // Neue BANK mappen
+          ZXN_WRITE_MMU2(uiPhysBank);
+          uiPhysBank_ = ((uint16_t) uiPhysBank);
+        }
+
+        pPixelRow = ((const uint8_t*) 0x4000) + (uiPhysAddr & 0x1FFF);  /* Zeilenadresse */
+
+        if (uiLineLen != esx_f_write(g_tState.bmpfile.hFile, pPixelRow, uiLineLen))
+        {
+          iReturn = EBADF;
+          break;
+        }
+      }
+
+      ZXN_WRITE_MMU2(uiMMU2);
+      intrinsic_ei();
+    }
+  }
+  else
+  {
+    iReturn = EINVAL;
+  }
+
+  return iReturn;
+}
+
+
+/*----------------------------------------------------------------------------*/
+/* makeScreenshot_L22()                                                       */
+/*----------------------------------------------------------------------------*/
+int makeScreenshot_L22(const screenmode_t* pInfo)
+{
+  pInfo = pInfo; /* to make the compiler happy */
+  return ENOTSUP;
+}
+
+
+/*----------------------------------------------------------------------------*/
+/* makeScreenshot_L23()                                                       */
+/*----------------------------------------------------------------------------*/
+int makeScreenshot_L23(const screenmode_t* pInfo)
+{
+  pInfo = pInfo; /* to make the compiler happy */
+  return ENOTSUP;
+}
+
+
+/*----------------------------------------------------------------------------*/
+/* makeScreenshot_L30()                                                       */
+/*----------------------------------------------------------------------------*/
+int makeScreenshot_L30(const screenmode_t* pInfo)
+{
+  pInfo = pInfo; /* to make the compiler happy */
+  return ENOTSUP;
+}
+
+
+/*----------------------------------------------------------------------------*/
+/* makeScreenshot_L31()                                                       */
+/*----------------------------------------------------------------------------*/
+int makeScreenshot_L31(const screenmode_t* pInfo)
+{
+  pInfo = pInfo; /* to make the compiler happy */
+  return ENOTSUP;
+}
+
+
+/*----------------------------------------------------------------------------*/
+/* makeScreenshot_L32()                                                       */
+/*----------------------------------------------------------------------------*/
+int makeScreenshot_L32(const screenmode_t* pInfo)
+{
+  pInfo = pInfo; /* to make the compiler happy */
+  return ENOTSUP;
+}
+
+
+/*----------------------------------------------------------------------------*/
+/* makeScreenshot_L33()                                                       */
+/*----------------------------------------------------------------------------*/
+int makeScreenshot_L33(const screenmode_t* pInfo)
 {
   pInfo = pInfo; /* to make the compiler happy */
   return ENOTSUP;
@@ -896,15 +1142,11 @@ int makeScreenshot_L3(const screenmode_t* pInfo)
 uint8_t detectScreenMode(void)
 {
   struct esx_mode tMode;
-
   memset(&tMode, sizeof(tMode), 0);
+
   if (0 == esx_ide_mode_get(&tMode))
   {
-   #ifdef __DEBUG__
-    printf("screenmode: %u:%u\n", tMode.mode8.layer, tMode.mode8.submode);
-   #endif
-
-    return ((tMode.mode8.layer & 0x0F) << 4) | (tMode.mode8.submode ? tMode.mode8.submode & 0x0F : 0x0F);
+    return ((tMode.mode8.layer & 0x0F) << 4) | (tMode.mode8.submode & 0x0F);
   }
 
   return 0xFF;
@@ -963,5 +1205,51 @@ const unsigned char* _strerror(int iCode)
 
 
 /*----------------------------------------------------------------------------*/
+/* msbidx8()                                                                  */
+/*----------------------------------------------------------------------------*/
+int8_t msbidx8(uint8_t uiValue)
+{
+  int iReturn = 0;
+
+  if (0 == uiValue)
+  {
+    return -1; /* error: no bit set */
+  }
+
+  while (uiValue >>= 1)
+  {
+    ++iReturn;
+  }
+
+  return iReturn;
+}
+
+
+/*----------------------------------------------------------------------------*/
 /*                                                                            */
 /*----------------------------------------------------------------------------*/
+
+#if 0
+void read_layer2_palette(uint16_t count, uint8_t *dst) {
+  // $43: Bits 6..4 = 001 (Layer2 erste Palette), Bit7=1 (kein AutoInc beim Schreiben nötig)
+  nextreg_write(0x43, 0x80 | (0b001 << 4));
+  nextreg_write(0x40, 0);            // Index 0
+
+  for (uint16_t i=0; i<count; ++i) {
+    uint8_t c8  = nextreg_read(0x41); // RRRGGGBB
+    uint8_t ext = nextreg_read(0x44); // P..... .B
+
+    // Zusammensetzen zu 9-Bit-RGB (je 3 Bit), Priority separat, falls gewünscht:
+    uint8_t r = (c8 >> 5) & 0x07;
+    uint8_t g = (c8 >> 2) & 0x07;
+    uint8_t b = ((c8 & 0x03) << 1) | (ext & 0x01); // B2..B1 aus c8, B0 aus ext
+    uint8_t prio = (ext >> 7) & 1;                 // nur Layer2 relevant
+
+    // Beispiel: 4 Bytes pro Eintrag: R,G,B,Prio
+    *dst++ = r; *dst++ = g; *dst++ = b; *dst++ = prio;
+
+    // Nächsten Index wählen (Lesen auto-inkrementiert nicht):
+    nextreg_write(0x40, (uint8_t)(i+1));
+  }
+}
+#endif
