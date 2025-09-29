@@ -20,10 +20,11 @@ Not for productive use at the moment - seems to work fine for default Spectrum v
 
 ### HISTORY
 
-0.0.16  Usage of optimized function to calculate pixel address in video memory
-0.0.17  Second LAYER0-palette added
-0.0.19  First version that creates basic LAYER2 screenshots
+- 0.0.16  Usage of optimized function to calculate pixel address in video memory
+- 0.0.17  Second LAYER0-palette added
+- 0.0.19  First version that creates basic LAYER2 screenshots
 
+---
        _____                _____ __          __ 
       / ___/______________ / ___// /_  ____  / /_
       \__ \/ ___/ ___/ __ \\__ \/ __ \/ __ \/ __/
