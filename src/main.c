@@ -161,13 +161,13 @@ const screenmode_t g_tScreenModes[] =
   {0x00, 256, 192,  16,  32,  24,   2, {0x4000, 0x1800}, {0x5800, 0x0300}}, /* Layer 0 */
   /* --- LAYER 1 -------------------------------- */
   {0x10, 128,  96, 256,   0,   0,   0}, /* Layer 1,0 */
-  {0x11, 256, 192, 256,  32,  24,   2}, /* Layer 1,1 */
+  {0x11, 256, 192, 256,  32,  24,   2, {0x4000, 0x1800}, {0x5800, 0x0300}}, /* Layer 1,1 */
   {0x12, 512, 192, 256,   0,   0,   0}, /* Layer 1,2 */
   {0x13, 256, 192, 256,  32, 192,   2}, /* Layer 1,3 */
   /* --- LAYER 2 -------------------------------- */
-  {0x20, 256, 192, 256,   0,   0,   0, {0x4000, 0xC000}, {0x0000, 0x0000}}, /* Layer 2 */
-  {0x22, 320, 256, 256,   0,   0,   0}, /* Layer 2,2 */
-  {0x23, 640, 256,  16,   0,   0,   0}, /* Layer 2,3 */
+  {0x20, 256, 192, 256,   0,   0,   0, {0x4000, 0x2000}, {0x0000, 0x0000}}, /* Layer 2   */
+  {0x22, 320, 256, 256,   0,   0,   0, {0x4000, 0x2000}, {0x0000, 0x0000}}, /* Layer 2,2 */
+  {0x23, 640, 256,  16,   0,   0,   0, {0x4000, 0x2000}, {0x0000, 0x0000}}, /* Layer 2,3 */
   /* --- LAYER 3 -------------------------------- */
   {0x30, 320, 256, 256,  40,  32,   2}, /* Layer 3,0 */
   {0x31, 640, 256, 256,  80,  32,   2}, /* Layer 3,1 */
@@ -371,7 +371,7 @@ video-/screenmode
 const screenmode_t* getScreenModeInfo(uint8_t uiMode);
 
 /*!
-This function is used to map a physical momory address to vaid pointer.
+This function is used to map a physical memory address to a void pointer.
 */
 void* memmap(uint16_t uiPhysAddr);
 
@@ -766,9 +766,9 @@ int makeScreenshot_L00(const screenmode_t* pInfo)
   if (0 != pInfo)
   {
     uint16_t uiX, uiY, uiZ;
-    uint16_t uiPalSize  = 16 * sizeof(bmppaletteentry_t) /* 16 * 4 */;
-    uint8_t  uiLineLen  = ((pInfo->uiResX >> 1) + 0x03) & 0xFC;
-    uint32_t uiPxlSize  = (((uint32_t) uiLineLen) * ((uint32_t) pInfo->uiResY));
+    uint16_t uiPalSize  = pInfo->uiColors * sizeof(bmppaletteentry_t);
+    uint8_t  uiLineLen  = pInfo->uiResX >> 1;   /* 32bit aligned */
+    uint32_t uiPxlSize  = ((uint32_t) pInfo->uiResY) * ((uint32_t) uiLineLen);
     uint8_t* pPixelData = (uint8_t*) memmap(pInfo->tMemPixel.uiAddr);
     uint8_t* pAttrData  = (uint8_t*) memmap(pInfo->tMemAttr.uiAddr);
     uint8_t* pPixelRow  = 0;
@@ -790,11 +790,11 @@ int makeScreenshot_L00(const screenmode_t* pInfo)
     /* create info header ... */
     if (EOK == iReturn)
     {
-      g_tState.bmpfile.tInfoHdr.iWidth         = pInfo->uiResX;                         /* image width     */
-      g_tState.bmpfile.tInfoHdr.iHeight        = pInfo->uiResY;                         /* image height    */
-      g_tState.bmpfile.tInfoHdr.uiBitCount     = 4;                                     /* bits per pixel  */
-      g_tState.bmpfile.tInfoHdr.uiSizeImage    = pInfo->uiResY * uiLineLen;             /* image size      */
-      g_tState.bmpfile.tInfoHdr.uiClrUsed      = uiPalSize / sizeof(bmppaletteentry_t); /* palette entries */
+      g_tState.bmpfile.tInfoHdr.iWidth      = pInfo->uiResX;                         /* image width     */
+      g_tState.bmpfile.tInfoHdr.iHeight     = pInfo->uiResY;                         /* image height    */
+      g_tState.bmpfile.tInfoHdr.uiBitCount  = 4;                                     /* bits per pixel  */
+      g_tState.bmpfile.tInfoHdr.uiSizeImage = pInfo->uiResY * uiLineLen;             /* image size      */
+      g_tState.bmpfile.tInfoHdr.uiClrUsed   = uiPalSize / sizeof(bmppaletteentry_t); /* palette entries */
 
       if (sizeof(g_tState.bmpfile.tInfoHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tInfoHdr, sizeof(g_tState.bmpfile.tInfoHdr)))
       {
@@ -963,10 +963,9 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
 
   if (0 != pInfo)
   {
-    uint16_t uiPalSize  = pInfo->uiColors * sizeof(bmppaletteentry_t);
-    uint16_t uiLineLen  = pInfo->uiResX /* 32bit aligned */;
-    uint32_t uiPxlSize  = (((uint32_t) uiLineLen) * ((uint32_t) pInfo->uiResY));
-    uint8_t* pPixelRow  = 0;
+    uint16_t uiPalSize = pInfo->uiColors * sizeof(bmppaletteentry_t);
+    uint32_t uiPxlSize = ((uint32_t) pInfo->uiResY) * ((uint32_t) pInfo->uiResX);
+    uint8_t* pPixelRow = 0;
 
     /* create file header ... */
     if (EOK == iReturn)
@@ -984,11 +983,11 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
     /* create info header ... */
     if (EOK == iReturn)
     {
-      g_tState.bmpfile.tInfoHdr.iWidth         = pInfo->uiResX;                         /* image width     */
-      g_tState.bmpfile.tInfoHdr.iHeight        = pInfo->uiResY;                         /* image height    */
-      g_tState.bmpfile.tInfoHdr.uiBitCount     = 8;                                     /* bits per pixel  */
-      g_tState.bmpfile.tInfoHdr.uiSizeImage    = pInfo->uiResY * uiLineLen;             /* image size      */
-      g_tState.bmpfile.tInfoHdr.uiClrUsed      = uiPalSize / sizeof(bmppaletteentry_t); /* palette entries */
+      g_tState.bmpfile.tInfoHdr.iWidth      = pInfo->uiResX;                         /* image width     */
+      g_tState.bmpfile.tInfoHdr.iHeight     = pInfo->uiResY;                         /* image height    */
+      g_tState.bmpfile.tInfoHdr.uiBitCount  = 8;                                     /* bits per pixel  */
+      g_tState.bmpfile.tInfoHdr.uiSizeImage = pInfo->uiResY * pInfo->uiResX;         /* image size      */
+      g_tState.bmpfile.tInfoHdr.uiClrUsed   = uiPalSize / sizeof(bmppaletteentry_t); /* palette entries */
 
       if (sizeof(g_tState.bmpfile.tInfoHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tInfoHdr, sizeof(g_tState.bmpfile.tInfoHdr)))
       {
@@ -1054,9 +1053,9 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
           uiPhysBank_ = ((uint16_t) uiPhysBank);
         }
 
-        pPixelRow = ((const uint8_t*) 0x4000) + (uiPhysAddr & 0x1FFF);  /* Zeilenadresse */
+        pPixelRow = ((const uint8_t*) memmap(pInfo->tMemPixel.uiAddr)) + (uiPhysAddr & 0x1FFF); 
 
-        if (uiLineLen != esx_f_write(g_tState.bmpfile.hFile, pPixelRow, uiLineLen))
+        if (pInfo->uiResX != esx_f_write(g_tState.bmpfile.hFile, pPixelRow, pInfo->uiResX))
         {
           iReturn = EBADF;
           break;
@@ -1081,8 +1080,7 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
 /*----------------------------------------------------------------------------*/
 int makeScreenshot_L22(const screenmode_t* pInfo)
 {
-  pInfo = pInfo; /* to make the compiler happy */
-  return ENOTSUP;
+  return makeScreenshot_L20(pInfo);
 }
 
 
@@ -1091,8 +1089,146 @@ int makeScreenshot_L22(const screenmode_t* pInfo)
 /*----------------------------------------------------------------------------*/
 int makeScreenshot_L23(const screenmode_t* pInfo)
 {
-  pInfo = pInfo; /* to make the compiler happy */
-  return ENOTSUP;
+  int iReturn = EOK;
+
+  if (0 != pInfo)
+  {
+    uint16_t uiPalSize = pInfo->uiColors * sizeof(bmppaletteentry_t);
+    uint16_t uiLineLen = pInfo->uiResX >> 1;  /* 640 pixel = 320 byte; 32bit aligned */
+    uint32_t uiPxlSize = ((uint32_t) pInfo->uiResY) * ((uint32_t) uiLineLen);
+    uint8_t* pPixelRow = 0;
+
+    /* create file header ... */
+    if (EOK == iReturn)
+    {
+      g_tState.bmpfile.tFileHdr.uiSize    += uiPalSize;
+      g_tState.bmpfile.tFileHdr.uiSize    += uiPxlSize;
+      g_tState.bmpfile.tFileHdr.uiOffBits += uiPalSize;
+
+      if (sizeof(g_tState.bmpfile.tFileHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tFileHdr, sizeof(g_tState.bmpfile.tFileHdr)))
+      {
+        iReturn = EBADF;
+      }
+    }
+
+    /* create info header ... */
+    if (EOK == iReturn)
+    {
+      g_tState.bmpfile.tInfoHdr.iWidth      = pInfo->uiResX;                         /* image width     */
+      g_tState.bmpfile.tInfoHdr.iHeight     = pInfo->uiResY;                         /* image height    */
+      g_tState.bmpfile.tInfoHdr.uiBitCount  = 4;                                     /* bits per pixel  */
+      g_tState.bmpfile.tInfoHdr.uiSizeImage = ((uint32_t) pInfo->uiResY) * ((uint32_t) uiLineLen); /* image size */
+      g_tState.bmpfile.tInfoHdr.uiClrUsed   = uiPalSize / sizeof(bmppaletteentry_t); /* palette entries */
+
+      if (sizeof(g_tState.bmpfile.tInfoHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tInfoHdr, sizeof(g_tState.bmpfile.tInfoHdr)))
+      {
+        iReturn = EBADF;
+      }
+    }
+
+    /* save color palette ... */
+   #if 0
+    if (EOK == iReturn)
+    {
+      bmppaletteentry_t tEntry;
+      tEntry.a = 0;
+
+      for (uint8_t uiR = 0; uiR < 8; ++uiR)
+      {
+        for (uint8_t uiG = 0; uiG < 8; ++uiG)
+        {
+          for (uint8_t uiB = 0; uiB < 4; ++uiB)
+          {
+            tEntry.r = (uiR << 5) | (uiR << 2) | (uiR >> 1);
+            tEntry.g = (uiG << 5) | (uiG << 2) | (uiG >> 1);
+            tEntry.b = (uiB << 6) | (uiB << 4) | (uiB << 2) | uiB;
+
+            if (sizeof(tEntry) != esx_f_write(g_tState.bmpfile.hFile, &tEntry, sizeof(tEntry)))
+            {
+              iReturn = EBADF;
+            }
+          }
+        }
+      }
+    }
+   #else
+    if (EOK == iReturn)
+    {
+      if (uiPalSize != esx_f_write(g_tState.bmpfile.hFile, &g_tColorPalL0[g_tState.uiPalette * 16], uiPalSize))
+      {
+        iReturn = EBADF;
+      }
+    }
+   #endif
+
+    /* write pixel data ... */
+    if (EOK == iReturn)
+    {
+      uint8_t* pBmpLine = 0;
+
+      if (0 == (pBmpLine = malloc(uiLineLen)))
+      {
+        iReturn = ENOMEM;
+      }
+      else
+      {
+        memset(pBmpLine, 0, uiLineLen);
+
+        uint8_t  uiMMU2 = 0xFF;
+        uint8_t  uiPhysBank; /* 8K bank */
+        uint16_t uiPhysBank_ = 0xFFFF;
+        uint32_t uiPhysBase;
+        uint32_t uiPhysAddr;
+        const uint8_t* pVirtBase = (const uint8_t*) memmap(pInfo->tMemPixel.uiAddr);
+
+        uiPhysBank = ZXN_READ_REG(0x12) * 2; /* 0x12 L2.ACTIVE.RAM.BANK | 16K bank => 8K bank*/
+        uiPhysBase = UINT32_C(0x2000) * ((uint32_t) uiPhysBank);  
+
+        uiMMU2 = ZXN_READ_MMU2();
+
+        for (uint16_t uiY = pInfo->uiResY - 1; uiY != 0xFFFF; --uiY)
+        {
+          intrinsic_di();
+
+          for (uint16_t uiX = 0; uiX < uiLineLen; ++uiX)
+          {
+            uiPhysAddr = uiPhysBase + (((uint32_t) uiY) * ((uint32_t) uiLineLen)) + ((uint32_t) uiX);
+            uiPhysBank = (uiPhysAddr >> 13) & 0xFF;
+
+            if (uiPhysBank_ != ((uint16_t) uiPhysBank))
+            {
+              ZXN_WRITE_MMU2(uiPhysBank);
+              uiPhysBank_ = ((uint16_t) uiPhysBank);
+            }
+
+            pBmpLine[uiX] = pVirtBase[uiPhysAddr & 0x1FFF]; 
+          }
+
+          intrinsic_ei();
+
+          if (uiLineLen != esx_f_write(g_tState.bmpfile.hFile, pBmpLine, uiLineLen))
+          {
+            iReturn = EBADF;
+            break;
+          }
+        }
+
+        ZXN_WRITE_MMU2(uiMMU2);
+
+        if (0 != pBmpLine)
+        {
+          free(pBmpLine);
+          pBmpLine = 0;
+        }
+      }
+    }
+  }
+  else
+  {
+    iReturn = EINVAL;
+  }
+
+  return iReturn;
 }
 
 
