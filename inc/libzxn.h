@@ -82,6 +82,14 @@ given position on the screen.
 extern uint8_t* zxn_pixelad_callee(uint8_t x, uint8_t y) __z88dk_callee;
 #define zxn_pixelad(x, y) zxn_pixelad_callee(x, y)
 
+/*!
+This function sets the colour of the border by a call of the ROM-function
+(in 48K-Spectrum-ROM)
+@param uiColour Colour of the border to set (0 .. 7)
+*/
+void zxn_border_fastcall(uint8_t uiColour) __z88dk_fastcall;
+#define zxn_border(x) zxn_border_fastcall(x)
+
 /*============================================================================*/
 /*                               Klassen                                      */
 /*============================================================================*/

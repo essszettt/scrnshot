@@ -5,7 +5,7 @@
 // #pragma printf = "%s %c %d %ld %u %lu %X %lX"
 #pragma printf = "%s %d %u"
 
-// default = 1  : non-zero closes open FILEs on exit
+// non-zero closes open FILEs on exit
 #pragma output CRT_ENABLE_CLOSE = 1   
 
 // room for one exit function
