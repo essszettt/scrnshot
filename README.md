@@ -21,8 +21,10 @@ Not for productive use at the moment - seems to work fine for default Spectrum v
 ### HISTORY
 
 - 0.0.16  Usage of optimized function to calculate pixel address in video memory
-- 0.0.17  Second LAYER0-palette added
-- 0.0.19  First version that creates basic LAYER2 screenshots
+- 0.0.17  Second LAYER 0-palette added
+- 0.0.19  First version that creates basic LAYER 2 screenshots
+- 0.0.20  First implementation of further LAYER 2 modes (bad palette handling)
+- 0.0.21  First support for LAYER 1,1
 
 ---
        _____                _____ __          __ 
