@@ -975,10 +975,12 @@ int makeScreenshot_L11(const screenmode_t* pInfo)
     {
       bmppaletteentry_t tEntry = {.a = 0x00};
       uint16_t uiValue;
+      uint8_t uiPalIdx;
+      uint8_t uiPalCtl;
 
       /* Status sichern, um nichts zu verstellen */
-      uint8_t uiPalIdx = ZXN_READ_REG(REG_PALETTE_INDEX  );
-      uint8_t uiPalCtl = ZXN_READ_REG(REG_PALETTE_CONTROL);
+      uiPalIdx = ZXN_READ_REG(REG_PALETTE_INDEX  );
+      uiPalCtl = ZXN_READ_REG(REG_PALETTE_CONTROL);
 
       for (uint8_t i = 0; i < 16; ++i)
       {
@@ -992,6 +994,12 @@ int makeScreenshot_L11(const screenmode_t* pInfo)
         uiValue  = ((uint16_t) ZXN_READ_REG(REG_PALETTE_VALUE_8 )) << 1;
         uiValue |= ((uint16_t) ZXN_READ_REG(REG_PALETTE_VALUE_16)) & 0x01;
 
+       #if 1
+        /* BMP erwartet B, G, R, 0x00 */
+        tEntry.b = rgb3_to_8( uiValue       & 0x07);
+        tEntry.g = rgb3_to_8((uiValue >> 3) & 0x07);
+        tEntry.r = rgb3_to_8((uiValue >> 6) & 0x07);
+       #else
         uint8_t uiR3 = (uiValue >> 6) & 0x07;   // RRR
         uint8_t uiG3 = (uiValue >> 3) & 0x07;   // GGG
         uint8_t uiB3 =  uiValue       & 0x07;   // BBB
@@ -1000,6 +1008,7 @@ int makeScreenshot_L11(const screenmode_t* pInfo)
         tEntry.b = rgb3_to_8(uiB3);
         tEntry.g = rgb3_to_8(uiG3);
         tEntry.r = rgb3_to_8(uiR3);
+       #endif
 
         if (sizeof(tEntry) != esx_f_write(g_tState.bmpfile.hFile, &tEntry, sizeof(tEntry)))
         {
@@ -1270,6 +1279,57 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
     /* save color palette ... */
     if (EOK == iReturn)
     {
+      bmppaletteentry_t tEntry = {.a = 0x00};
+      uint16_t uiValue;
+      uint8_t uiPalIdx;
+      uint8_t uiPalCtl;
+      uint8_t uiPalAct;
+
+      /* Status sichern, um nichts zu verstellen */
+      uiPalIdx = ZXN_READ_REG(REG_PALETTE_INDEX  );
+      uiPalCtl = ZXN_READ_REG(REG_PALETTE_CONTROL);
+
+      /* Aktive L2-Palette ermitteln: Bit 2 (0 = erste, 1 = zweite) */
+      uiPalAct = (uiPalCtl >> 2) & 0x01;
+
+      /* Palette zum *Lesen* auswaehlen (Bits 6-4):
+      001 = L2 erste Palette, 101 = L2 zweite Palette
+      */
+      uiValue = (uint8_t) ((uiPalCtl & 0x8F) | (uiPalAct ? 0xA0 : 0x20));
+
+      ZXN_WRITE_REG(REG_PALETTE_CONTROL, uiValue);
+
+      for (uint16_t i = 0; i < pInfo->uiColors; ++i)
+      {
+        /* Palettenindex auswaehlen */
+        ZXN_WRITE_REG(REG_PALETTE_INDEX, i);
+
+        /* Aktuellen Farbwert lesen:
+        0x41 liefert RRR GGG BB.
+        0x44 liefert ... ... ..B
+        */
+        uiValue  = ((uint16_t) ZXN_READ_REG(REG_PALETTE_VALUE_8 )) << 1;
+        uiValue |= ((uint16_t) ZXN_READ_REG(REG_PALETTE_VALUE_16)) & 0x01;
+
+        tEntry.b = rgb3_to_8( uiValue       & 0x07);
+        tEntry.g = rgb3_to_8((uiValue >> 3) & 0x07);
+        tEntry.r = rgb3_to_8((uiValue >> 6) & 0x07);
+
+        if (sizeof(tEntry) != esx_f_write(g_tState.bmpfile.hFile, &tEntry, sizeof(tEntry)))
+        {
+          iReturn = EBADF;
+        }
+        /* TODO: Writing four bytes is not efficient ! */
+      }
+
+      /* Registerzustand wiederherstellen */
+      ZXN_WRITE_REG(REG_PALETTE_INDEX,   uiPalIdx);
+      ZXN_WRITE_REG(REG_PALETTE_CONTROL, uiPalCtl);
+    }
+
+#if 0
+    if (EOK == iReturn)
+    {
       bmppaletteentry_t tEntry;
       tEntry.a = 0;
 
@@ -1297,6 +1357,7 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
         }
       }
     }
+#endif
 
     /* write pixel data ... */
     if (EOK == iReturn)
