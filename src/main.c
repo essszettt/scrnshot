@@ -56,11 +56,6 @@
 /*                               Defines                                      */
 /*============================================================================*/
 /*!
-Marker for the list of valid error messages, that can be returned to BASIC.
-*/
-#define END_OF_LIST (0x7FFF)
-
-/*!
 With this macro it can be controlled wether the pixel calculations should be
 done by the functions from "zxn.h" or not ...
   - 0 = calculate pixeladdress the hard way (bit-fiddling in C)
@@ -177,6 +172,7 @@ const screenmode_t g_tScreenModes[] =
   {0xFF,   0,   0,   0,   0,   0,   0} 
 };
 
+#if 0
 /*!
 BMP color palette including all spectrum layer 0 colors.
 (https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes)
@@ -223,35 +219,7 @@ const bmppaletteentry_t g_tColorPalL0[] =
   /*--------------------------------------------*/
 };
 #define PALETTES (sizeof(g_tColorPalL0) / sizeof(bmppaletteentry_t) / 16)
-
-/*!
-Table to define all textual error messages that are returned to NextOS/BASIC
-*/
-const errentry_t g_tErrTable[] =
-{
-  {EOK,         "no error"                      "\xA0"},
-  {EACCES,      "access denied"                 "\xA0"},
-  {EBADF,       "bad file"                      "\xA0"},
-  {EBDFD,       "bad file descriptor"           "\xA0"},
-  {EDOM,        "out of domain of function"     "\xA0"},
-  {EFBIG,       "file too large"                "\xA0"},
-  {EINVAL,      "invalid value"                 "\xA0"},
-  {EMFILE,      "too many open files"           "\xA0"},
-  {ENFILE,      "too many open files in system" "\xA0"},
-  {ENOLCK,      "no locks available"            "\xA0"},
-  {ENOMEM,      "out of mem"                    "\xA0"},
-  {ENOTSUP,     "not supported"                 "\xA0"},
-  {EOVERFLOW,   "overflow"                      "\xA0"},
-  {ERANGE,      "out of range"                  "\xA0"},
-  {ESTAT,       "bad state"                     "\xA0"},
-  {EAGAIN,      "resource temp. unavailable"    "\xA0"},
-  {EWOULDBLOCK, "operation would block"         "\xA0"},
-  /* ---------------- APPLICATOPN SPECIFIC ---------- */
-  {EBREAK,      "D BREAK - no repeat"           "\xA0"},
-  {ETIMEOUT,    "timeout error"                 "\xA0"},
-  /* ---------------- END-OF-LIST ------------------- */
-  {END_OF_LIST, "unknown error"                 "\xA0"}
-};
+#endif
 
 /*============================================================================*/
 /*                               Strukturen                                   */
@@ -360,6 +328,12 @@ Reading the video memory and transcode it to BMP data for LAYER 3,3
 static int makeScreenshot_L33(const screenmode_t* pInfo);
 
 /*!
+This function reads the current colour palette from NREGs and saves it to the
+already opened BMP file.
+*/
+static int saveColourPalette(const screenmode_t* pInfo);
+
+/*!
 This function tries to detect the current screen mode (layer 0, layer 1, ...)
 */
 uint8_t detectScreenMode(void);
@@ -371,17 +345,9 @@ video-/screenmode
 const screenmode_t* getScreenModeInfo(uint8_t uiMode);
 
 /*!
-This function is used to map a physical memory address to a void pointer.
+Convert a RGB3 value to a corresponding RGB8 value
+3-Bit (0..7) -> 8-Bit (0..255): "bit replicate"
 */
-void* memmap(uint16_t uiPhysAddr);
-
-/*!
-This function returns a pointer to a textual error message for the given
-error code
-*/
-const unsigned char* _strerror(int iCode);
-
-/* 3-Bit (0..7) -> 8-Bit (0..255): "bit replicate" */
 static inline uint8_t rgb3_to_8(uint8_t v)
 {
   return (uint8_t)((v << 5) | (v << 2) | (v >> 1));  // 0,36,73,109,146,182,219,255
@@ -464,7 +430,7 @@ int main(int argc, char* argv[])
     }
   }
 
-  return (int) (EOK == g_tState.iExitCode ? 0 : _strerror(g_tState.iExitCode));
+  return (int) (EOK == g_tState.iExitCode ? 0 : zxn_strerror(g_tState.iExitCode));
 }
 
 
@@ -501,6 +467,7 @@ int parseArguments(int argc, char* argv[])
       {
         g_tState.bForce = true;
       }
+#if 0
       else if ((0 == strcmp(acArg, "-p")) /* || (0 == stricmp(acArg, "--palette")) */)
       {
         if ((i + 1) < argc)
@@ -510,6 +477,7 @@ int parseArguments(int argc, char* argv[])
           ++i;
         }
       }
+#endif
       else
       {
         fprintf(stderr, "unknown option: %s\n", acArg);
@@ -527,18 +495,7 @@ int parseArguments(int argc, char* argv[])
 
   if (ACTION_NONE == g_tState.eAction)
   {
-   #if 1
     g_tState.eAction = ACTION_SHOT;
-   #else
-    if (0 < strnlen(g_tState.bmpfile.acPathName, sizeof(g_tState.bmpfile.acPathName)))
-    {
-      g_tState.eAction = ACTION_SHOT;
-    }
-    else if ('\0' == g_tState.bmpfile.acPathName[0])
-    {
-      g_tState.eAction = ACTION_SHOT;
-    }
-   #endif
   }
 
   return iReturn;
@@ -552,11 +509,10 @@ int showHelp(void)
 {
   printf("%s\n\n", VER_FILEDESCRIPTION_STR);
 
-  printf("%s file [-f][-p idx][-q][-h][-v]\n\n", strupr(VER_INTERNALNAME_STR));
+  printf("%s file [-f][-q][-h][-v]\n\n", strupr(VER_INTERNALNAME_STR));
   /*      0.........1.........2.........3. */
   printf(" file        pathname of file\n");
   printf(" -f[orce]    force overwrite\n");
-  printf(" -p[alette]  index of palette\n");
   printf(" -q[uiet]    print no messages\n");
   printf(" -h[elp]     print this help\n");
   printf(" -v[ersion]  print version info\n");
@@ -793,7 +749,7 @@ int makeScreenshot_L00(const screenmode_t* pInfo)
       }
     }
 
-    /* create info header ... */
+    /* Create info header ... */
     if (EOK == iReturn)
     {
       g_tState.bmpfile.tInfoHdr.iWidth      = pInfo->uiResX;                         /* image width     */
@@ -811,13 +767,10 @@ int makeScreenshot_L00(const screenmode_t* pInfo)
     /* Save color palette ... */
     if (EOK == iReturn)
     {
-      if (uiPalSize != esx_f_write(g_tState.bmpfile.hFile, &g_tColorPalL0[g_tState.uiPalette * 16], uiPalSize))
-      {
-        iReturn = EBADF;
-      }
+      iReturn = saveColourPalette(pInfo);
     }
 
-    /* write pixel data ... */
+    /* Write pixel data ... */
     if (EOK == iReturn)
     {
       uint8_t* pBmpLine = 0;
@@ -942,7 +895,7 @@ int makeScreenshot_L11(const screenmode_t* pInfo)
     uint8_t* pPixelRow  = 0;
     uint8_t* pAttrRow   = 0;
 
-    /* create file header ... */
+    /* Create file header ... */
     if (EOK == iReturn)
     {
       g_tState.bmpfile.tFileHdr.uiSize    += uiPalSize;
@@ -955,7 +908,7 @@ int makeScreenshot_L11(const screenmode_t* pInfo)
       }
     }
 
-    /* create info header ... */
+    /* Create info header ... */
     if (EOK == iReturn)
     {
       g_tState.bmpfile.tInfoHdr.iWidth      = pInfo->uiResX;                         /* image width     */
@@ -973,55 +926,10 @@ int makeScreenshot_L11(const screenmode_t* pInfo)
     /* Save color palette ... */
     if (EOK == iReturn)
     {
-      bmppaletteentry_t tEntry = {.a = 0x00};
-      uint16_t uiValue;
-      uint8_t uiPalIdx;
-      uint8_t uiPalCtl;
-
-      /* Status sichern, um nichts zu verstellen */
-      uiPalIdx = ZXN_READ_REG(REG_PALETTE_INDEX  );
-      uiPalCtl = ZXN_READ_REG(REG_PALETTE_CONTROL);
-
-      for (uint8_t i = 0; i < 16; ++i)
-      {
-        /* Palettenindex auswaehlen */
-        ZXN_WRITE_REG(REG_PALETTE_INDEX, i);
-
-        /* Aktuellen Farbwert lesen:
-        0x41 liefert RRR GGG BB.  (8 Bit)
-        0x44 liefert ... ... ..B
-        */
-        uiValue  = ((uint16_t) ZXN_READ_REG(REG_PALETTE_VALUE_8 )) << 1;
-        uiValue |= ((uint16_t) ZXN_READ_REG(REG_PALETTE_VALUE_16)) & 0x01;
-
-       #if 1
-        /* BMP erwartet B, G, R, 0x00 */
-        tEntry.b = rgb3_to_8( uiValue       & 0x07);
-        tEntry.g = rgb3_to_8((uiValue >> 3) & 0x07);
-        tEntry.r = rgb3_to_8((uiValue >> 6) & 0x07);
-       #else
-        uint8_t uiR3 = (uiValue >> 6) & 0x07;   // RRR
-        uint8_t uiG3 = (uiValue >> 3) & 0x07;   // GGG
-        uint8_t uiB3 =  uiValue       & 0x07;   // BBB
-
-        /* BMP erwartet B, G, R, 0x00 */
-        tEntry.b = rgb3_to_8(uiB3);
-        tEntry.g = rgb3_to_8(uiG3);
-        tEntry.r = rgb3_to_8(uiR3);
-       #endif
-
-        if (sizeof(tEntry) != esx_f_write(g_tState.bmpfile.hFile, &tEntry, sizeof(tEntry)))
-        {
-          iReturn = EBADF;
-        }
-      }
-
-      /* Registerzustand wiederherstellen */
-      ZXN_WRITE_REG(REG_PALETTE_INDEX,   uiPalIdx);
-      ZXN_WRITE_REG(REG_PALETTE_CONTROL, uiPalCtl);
+      iReturn = saveColourPalette(pInfo);
     }
 
-    /* write pixel data ... */
+    /* Write pixel data ... */
     if (EOK == iReturn)
     {
       uint8_t* pBmpLine = 0;
@@ -1158,8 +1066,14 @@ int makeScreenshot_L13(const screenmode_t* pInfo)
     }
 
     /* Save color palette ... */
+#if 1
     if (EOK == iReturn)
     {
+      iReturn = saveColourPalette(pInfo);
+    }
+#else
+    if (EOK == iReturn)
+    {      
       const uint16_t uiPalSize_ = 16 * sizeof(bmppaletteentry_t);
 
       for (uint8_t i = 0; i < 16; ++i)
@@ -1170,6 +1084,7 @@ int makeScreenshot_L13(const screenmode_t* pInfo)
         }
       }
     }
+#endif
 
     /* write pixel data ... */
     if (EOK == iReturn)
@@ -1248,7 +1163,7 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
     uint32_t uiPxlSize = ((uint32_t) pInfo->uiResY) * ((uint32_t) pInfo->uiResX);
     uint8_t* pPixelRow = 0;
 
-    /* create file header ... */
+    /* Create file header ... */
     if (EOK == iReturn)
     {
       g_tState.bmpfile.tFileHdr.uiSize    += uiPalSize;
@@ -1261,7 +1176,7 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
       }
     }
 
-    /* create info header ... */
+    /* Create info header ... */
     if (EOK == iReturn)
     {
       g_tState.bmpfile.tInfoHdr.iWidth      = pInfo->uiResX;                         /* image width     */
@@ -1276,55 +1191,10 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
       }
     }
 
-    /* save color palette ... */
+    /* Save color palette ... */
     if (EOK == iReturn)
     {
-      bmppaletteentry_t tEntry = {.a = 0x00};
-      uint16_t uiValue;
-      uint8_t uiPalIdx;
-      uint8_t uiPalCtl;
-      uint8_t uiPalAct;
-
-      /* Status sichern, um nichts zu verstellen */
-      uiPalIdx = ZXN_READ_REG(REG_PALETTE_INDEX  );
-      uiPalCtl = ZXN_READ_REG(REG_PALETTE_CONTROL);
-
-      /* Aktive L2-Palette ermitteln: Bit 2 (0 = erste, 1 = zweite) */
-      uiPalAct = (uiPalCtl >> 2) & 0x01;
-
-      /* Palette zum *Lesen* auswaehlen (Bits 6-4):
-      001 = L2 erste Palette, 101 = L2 zweite Palette
-      */
-      uiValue = (uint8_t) ((uiPalCtl & 0x8F) | (uiPalAct ? 0xA0 : 0x20));
-
-      ZXN_WRITE_REG(REG_PALETTE_CONTROL, uiValue);
-
-      for (uint16_t i = 0; i < pInfo->uiColors; ++i)
-      {
-        /* Palettenindex auswaehlen */
-        ZXN_WRITE_REG(REG_PALETTE_INDEX, i);
-
-        /* Aktuellen Farbwert lesen:
-        0x41 liefert RRR GGG BB.
-        0x44 liefert ... ... ..B
-        */
-        uiValue  = ((uint16_t) ZXN_READ_REG(REG_PALETTE_VALUE_8 )) << 1;
-        uiValue |= ((uint16_t) ZXN_READ_REG(REG_PALETTE_VALUE_16)) & 0x01;
-
-        tEntry.b = rgb3_to_8( uiValue       & 0x07);
-        tEntry.g = rgb3_to_8((uiValue >> 3) & 0x07);
-        tEntry.r = rgb3_to_8((uiValue >> 6) & 0x07);
-
-        if (sizeof(tEntry) != esx_f_write(g_tState.bmpfile.hFile, &tEntry, sizeof(tEntry)))
-        {
-          iReturn = EBADF;
-        }
-        /* TODO: Writing four bytes is not efficient ! */
-      }
-
-      /* Registerzustand wiederherstellen */
-      ZXN_WRITE_REG(REG_PALETTE_INDEX,   uiPalIdx);
-      ZXN_WRITE_REG(REG_PALETTE_CONTROL, uiPalCtl);
+      iReturn = saveColourPalette(pInfo);
     }
 
 #if 0
@@ -1359,7 +1229,7 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
     }
 #endif
 
-    /* write pixel data ... */
+    /* Write pixel data ... */
     if (EOK == iReturn)
     {
       uint8_t  uiMMU2 = 0xFF;
@@ -1487,10 +1357,7 @@ int makeScreenshot_L23(const screenmode_t* pInfo)
    #else
     if (EOK == iReturn)
     {
-      if (uiPalSize != esx_f_write(g_tState.bmpfile.hFile, &g_tColorPalL0[g_tState.uiPalette * 16], uiPalSize))
-      {
-        iReturn = EBADF;
-      }
+      iReturn = saveColourPalette(pInfo);
     }
    #endif
 
@@ -1606,6 +1473,80 @@ int makeScreenshot_L33(const screenmode_t* pInfo)
 
 
 /*----------------------------------------------------------------------------*/
+/* saveColourPalette()                                                        */
+/*----------------------------------------------------------------------------*/
+static int saveColourPalette(const screenmode_t* pInfo)
+{
+  int iReturn = EINVAL;
+
+  if ((0 != pInfo) && (INV_FILE_HND != g_tState.bmpfile.hFile))
+  {
+    bmppaletteentry_t tEntry = {.a = 0x00};
+    uint16_t uiValue;
+    uint8_t uiPalIdx;
+    uint8_t uiPalCtl;
+    uint8_t uiPalAct;
+
+    /* Status sichern, um nichts zu verstellen */
+    uiPalIdx = ZXN_READ_REG(REG_PALETTE_INDEX  );
+    uiPalCtl = ZXN_READ_REG(REG_PALETTE_CONTROL);
+
+    /* Detect active palette */
+    switch ((pInfo->uiMode >> 4) & 0x0F)
+    {
+      case 0:
+      case 1: /* 1. 000, 2. 100 */
+        uiPalAct = (uiPalCtl >> 1) & 0x01;
+        uiValue  = (uiPalCtl & 0x8F) | ((uiPalAct ? 0x04 : 0x00) << 4);
+        break;
+
+      case 2: /* 1. 001, 2. 101 */
+        uiPalAct = (uiPalCtl >> 2) & 0x01;
+        uiValue  = (uiPalCtl & 0x8F) | ((uiPalAct ? 0x05 : 0x01) << 4);
+        break;
+
+      default:
+        uiValue  = uiPalCtl;
+    }
+
+    /* Select active palette */
+    ZXN_WRITE_REG(REG_PALETTE_CONTROL, uiValue);
+
+    for (uint16_t i = 0; i < pInfo->uiColors; ++i)
+    {
+      /* Palettenindex auswaehlen */
+      ZXN_WRITE_REG(REG_PALETTE_INDEX, i);
+
+      /* Aktuellen Farbwert lesen:
+      0x41 liefert RRR GGG BB.
+      0x44 liefert ... ... ..B
+      */
+      uiValue  = ((uint16_t) ZXN_READ_REG(REG_PALETTE_VALUE_8 )) << 1;
+      uiValue |= ((uint16_t) ZXN_READ_REG(REG_PALETTE_VALUE_16)) & 0x01;
+
+      tEntry.b = rgb3_to_8( uiValue       & 0x07);
+      tEntry.g = rgb3_to_8((uiValue >> 3) & 0x07);
+      tEntry.r = rgb3_to_8((uiValue >> 6) & 0x07);
+
+      if (sizeof(tEntry) != esx_f_write(g_tState.bmpfile.hFile, &tEntry, sizeof(tEntry)))
+      {
+        iReturn = EBADF;
+        break;
+      }
+    }
+
+    /* Registerzustand wiederherstellen */
+    ZXN_WRITE_REG(REG_PALETTE_INDEX,   uiPalIdx);
+    ZXN_WRITE_REG(REG_PALETTE_CONTROL, uiPalCtl);
+
+    iReturn = EOK;
+  }
+
+  return iReturn;
+}
+
+
+/*----------------------------------------------------------------------------*/
 /* detectScreenMode()                                                         */
 /*----------------------------------------------------------------------------*/
 uint8_t detectScreenMode(void)
@@ -1640,57 +1581,6 @@ const screenmode_t* getScreenModeInfo(uint8_t uiMode)
   }
 
   return pReturn;
-}
-
-
-/*----------------------------------------------------------------------------*/
-/* memmap()                                                                   */
-/*----------------------------------------------------------------------------*/
-void* memmap(uint16_t uiPhysAddr)
-{
-  return (void*) uiPhysAddr;
-}
-
-
-/*----------------------------------------------------------------------------*/
-/* _strerror()                                                                */
-/*----------------------------------------------------------------------------*/
-const unsigned char* _strerror(int iCode)
-{
-  const errentry_t* pIndex = g_tErrTable;
-
-  while (END_OF_LIST != pIndex->iCode)
-  {
-    if (iCode == pIndex->iCode)
-    {
-      break;
-    }
-
-    ++pIndex;
-  }
-
-  return pIndex->acText;
-}
-
-
-/*----------------------------------------------------------------------------*/
-/* msbidx8()                                                                  */
-/*----------------------------------------------------------------------------*/
-int8_t msbidx8(uint8_t uiValue)
-{
-  int iReturn = 0;
-
-  if (0 == uiValue)
-  {
-    return -1; /* error: no bit set */
-  }
-
-  while (uiValue >>= 1)
-  {
-    ++iReturn;
-  }
-
-  return iReturn;
 }
 
 

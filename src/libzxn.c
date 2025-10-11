@@ -1,6 +1,6 @@
 /*-----------------------------------------------------------------------------+
 |                                                                              |
-| filename: libzxn.h                                                           |
+| filename: libzxn.c                                                           |
 | project:  ZX Spectrum Next - Common functions                                |
 | author:   Stefan Zell                                                        |
 | date:     09/09/2025                                                         |
@@ -33,35 +33,25 @@
 |                                                                          ;-) |
 +-----------------------------------------------------------------------------*/
 
-#if !defined(__LIBZXN_H__)
-  #define __LIBZXN_H__
-
 /*============================================================================*/
 /*                               Includes                                     */
 /*============================================================================*/
 #include <stdint.h>
+#include <stdlib.h>
+#include <errno.h>
+
+#include <arch/zxn.h>
+#include <arch/zxn/esxdos.h>
+
+#include "libzxn.h"
 
 /*============================================================================*/
 /*                               Defines                                      */
 /*============================================================================*/
-#define ERROR_SPECIFIC (0x0200)
-#define EBREAK   (ERROR_SPECIFIC + 0x00)
-#define ETIMEOUT (ERROR_SPECIFIC + 0x01)
-
-#ifndef ERANGE
-  #define ERANGE __ERANGE
-  #warning "ERANGE not defined in errno.h (typo ?)"
-#endif
-
-#ifndef RTM_28MHZ
-  #define RTM_28MHZ 0x03
-  #warning "RTM_28MHZ not defined in zxn.h"
-#endif
-
 /*!
-With this macro the value of a variable can be limited to the given interval.
+Marker for the list of valid error messages, that can be returned to BASIC.
 */
-#define constrain(val, min, max) (val <= min ? min : val >= max ? max : val)
+#define END_OF_LIST (0x7FFF)
 
 /*============================================================================*/
 /*                               Namespaces                                   */
@@ -74,6 +64,34 @@ With this macro the value of a variable can be limited to the given interval.
 /*============================================================================*/
 /*                               Variablen                                    */
 /*============================================================================*/
+/*!
+Table to define all textual error messages that are returned to NextOS/BASIC
+*/
+const errentry_t g_tErrTable[] =
+{
+  {EOK,         "no error"                      "\xA0"},
+  {EACCES,      "access denied"                 "\xA0"},
+  {EBADF,       "bad file"                      "\xA0"},
+  {EBDFD,       "bad file descriptor"           "\xA0"},
+  {EDOM,        "out of domain of function"     "\xA0"},
+  {EFBIG,       "file too large"                "\xA0"},
+  {EINVAL,      "invalid value"                 "\xA0"},
+  {EMFILE,      "too many open files"           "\xA0"},
+  {ENFILE,      "too many open files in system" "\xA0"},
+  {ENOLCK,      "no locks available"            "\xA0"},
+  {ENOMEM,      "out of mem"                    "\xA0"},
+  {ENOTSUP,     "not supported"                 "\xA0"},
+  {EOVERFLOW,   "overflow"                      "\xA0"},
+  {ERANGE,      "out of range"                  "\xA0"},
+  {ESTAT,       "bad state"                     "\xA0"},
+  {EAGAIN,      "resource temp. unavailable"    "\xA0"},
+  {EWOULDBLOCK, "operation would block"         "\xA0"},
+  /* ---------------- APPLICATOPN SPECIFIC ---------- */
+  {EBREAK,      "D BREAK - no repeat"           "\xA0"},
+  {ETIMEOUT,    "timeout error"                 "\xA0"},
+  /* ---------------- END-OF-LIST ------------------- */
+  {END_OF_LIST, "unknown error"                 "\xA0"}
+};
 
 /*============================================================================*/
 /*                               Strukturen                                   */
@@ -82,54 +100,10 @@ With this macro the value of a variable can be limited to the given interval.
 /*============================================================================*/
 /*                               Typ-Definitionen                             */
 /*============================================================================*/
-/*!
-Structure to describe a entry of the global table with all valid error codes and
-messages that can be handovered back to BASIC.
-*/
-typedef struct _errentry
-{
-  int iCode;
-  const unsigned char* acText;
-} errentry_t;
 
 /*============================================================================*/
 /*                               Prototypen                                   */
 /*============================================================================*/
-/*!
-This function calculates the address of the byte in video-memory of a pixel at
-given position on the screen.
-@param x  x-coordinate (0 - 255)
-@param y  y-coordinate (0 - 192)
-@return Pointer to the byte in video-memory
-*/
-extern uint8_t* zxn_pixelad_callee(uint8_t x, uint8_t y) __z88dk_callee;
-#define zxn_pixelad(x, y) zxn_pixelad_callee(x, y)
-
-/*!
-This function sets the colour of the border by a call of the ROM-function
-(in 48K-Spectrum-ROM)
-@param uiColour Colour of the border to set (0 .. 7)
-*/
-void zxn_border_fastcall(uint8_t uiColour) __z88dk_fastcall;
-#define zxn_border(x) zxn_border_fastcall(x)
-
-/*!
-This function returns a pointer to a textual error message for the given
-error code
-@return Pointer to a human readable message
-*/
-const unsigned char* zxn_strerror(int iCode);
-
-/*!
-This function is used to map a physical memory address to a void pointer.
-*/
-void* memmap(uint16_t uiPhysAddr);
-
-/*!
-This function detects the index of the most significant bit in an value of
-type "uint8_t"
-*/
-int8_t msbidx8(uint8_t uiValue);
 
 /*============================================================================*/
 /*                               Klassen                                      */
@@ -140,7 +114,56 @@ int8_t msbidx8(uint8_t uiValue);
 /*============================================================================*/
 
 /*----------------------------------------------------------------------------*/
+/* zxn_strerror()                                                             */
+/*----------------------------------------------------------------------------*/
+const unsigned char* zxn_strerror(int iCode)
+{
+  const errentry_t* pIndex = g_tErrTable;
+
+  while (END_OF_LIST != pIndex->iCode)
+  {
+    if (iCode == pIndex->iCode)
+    {
+      break;
+    }
+
+    ++pIndex;
+  }
+
+  return pIndex->acText;
+}
+
+
+/*----------------------------------------------------------------------------*/
+/* memmap()                                                                   */
+/*----------------------------------------------------------------------------*/
+void* memmap(uint16_t uiPhysAddr)
+{
+  return (void*) uiPhysAddr;
+}
+
+
+/*----------------------------------------------------------------------------*/
+/* msbidx8()                                                                  */
+/*----------------------------------------------------------------------------*/
+int8_t msbidx8(uint8_t uiValue)
+{
+  int iReturn = 0;
+
+  if (0 == uiValue)
+  {
+    return -1; /* error: no bit set */
+  }
+
+  while (uiValue >>= 1)
+  {
+    ++iReturn;
+  }
+
+  return iReturn;
+}
+
+
+/*----------------------------------------------------------------------------*/
 /*                                                                            */
 /*----------------------------------------------------------------------------*/
-
-#endif /* __LIBZXN_H__ */

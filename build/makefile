@@ -11,6 +11,7 @@ BUILD_DIR = .
 
 # Quellcode-Dateien
 SRCS  = $(SRC_DIR)/main.c
+SRCS += $(SRC_DIR)/libzxn.c
 SRCS += $(SRC_DIR)/libzxn.asm
 
 # Compiler-Flags
