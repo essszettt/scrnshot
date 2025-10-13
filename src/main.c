@@ -158,7 +158,7 @@ const screenmode_t g_tScreenModes[] =
   {0x10, 128,  96, 256,   0,   0,   0}, /* Layer 1,0 */
   {0x11, 256, 192,  16,  32,  24,   2, {0x4000, 0x1800}, {0x5800, 0x0300}}, /* Layer 1,1 */
   {0x12, 512, 192, 256,   0,   0,   0}, /* Layer 1,2 */
-  {0x13, 256, 192, 256,  32, 192,   2, {0x4000, 0x1800}, {0x6000, 0x1800}}, /* Layer 1,3 */
+  {0x13, 256, 192,  16,  32, 192,   2, {0x4000, 0x1800}, {0x6000, 0x1800}}, /* Layer 1,3 */
   /* --- LAYER 2 -------------------------------- */
   {0x20, 256, 192, 256,   0,   0,   0, {0x4000, 0x2000}, {0x0000, 0x0000}}, /* Layer 2   */
   {0x22, 320, 256, 256,   0,   0,   0, {0x4000, 0x2000}, {0x0000, 0x0000}}, /* Layer 2,2 */
@@ -1030,7 +1030,7 @@ int makeScreenshot_L13(const screenmode_t* pInfo)
   {
     uint16_t uiX, uiY, uiZ;
     uint16_t uiPalSize  = pInfo->uiColors * sizeof(bmppaletteentry_t);
-    uint16_t uiLineLen  = pInfo->uiResX;   /* 32bit aligned */
+    uint8_t  uiLineLen  = pInfo->uiResX >> 1;   /* 32bit aligned */
     uint32_t uiPxlSize  = ((uint32_t) pInfo->uiResY) * ((uint32_t) uiLineLen);
     uint8_t* pPixelData = (uint8_t*) memmap(pInfo->tMemPixel.uiAddr);
     uint8_t* pAttrData  = (uint8_t*) memmap(pInfo->tMemAttr.uiAddr);
@@ -1055,7 +1055,7 @@ int makeScreenshot_L13(const screenmode_t* pInfo)
     {
       g_tState.bmpfile.tInfoHdr.iWidth      = pInfo->uiResX;                         /* image width     */
       g_tState.bmpfile.tInfoHdr.iHeight     = pInfo->uiResY;                         /* image height    */
-      g_tState.bmpfile.tInfoHdr.uiBitCount  = 8;                                     /* bits per pixel  */
+      g_tState.bmpfile.tInfoHdr.uiBitCount  = 4;                                     /* bits per pixel  */
       g_tState.bmpfile.tInfoHdr.uiSizeImage = uiPxlSize;                             /* image size      */
       g_tState.bmpfile.tInfoHdr.uiClrUsed   = uiPalSize / sizeof(bmppaletteentry_t); /* palette entries */
 
@@ -1066,30 +1066,16 @@ int makeScreenshot_L13(const screenmode_t* pInfo)
     }
 
     /* Save color palette ... */
-#if 1
     if (EOK == iReturn)
     {
       iReturn = saveColourPalette(pInfo);
     }
-#else
-    if (EOK == iReturn)
-    {      
-      const uint16_t uiPalSize_ = 16 * sizeof(bmppaletteentry_t);
-
-      for (uint8_t i = 0; i < 16; ++i)
-      {
-        if (uiPalSize_ != esx_f_write(g_tState.bmpfile.hFile, &g_tColorPalL0[g_tState.uiPalette * 16], uiPalSize_))
-        {
-          iReturn = EBADF;
-        }
-      }
-    }
-#endif
 
     /* write pixel data ... */
     if (EOK == iReturn)
     {
       uint8_t* pBmpLine = 0;
+      uint8_t  uiBmpIdx;
       uint8_t  uiBmpPixel;
       uint8_t  uiPixelByte;
       uint8_t  uiAttrByte;
@@ -1104,8 +1090,23 @@ int makeScreenshot_L13(const screenmode_t* pInfo)
 
         for (uiY = pInfo->uiResY - 1; uiY != 0xFFFF; --uiY)
         {
-          pPixelRow = zxn_pixelad(0, (uint8_t) uiY);  /* Pixeladresse    */
-          pAttrRow  = pAttrData + (uiY << 5);         /* Attributadresse */
+          /*
+          Attributes interleaved like pixel data ...
+          */
+
+         #if (_PIXEL_CALC_ == 0)
+          uiZ = ((uiY & 0x07) << 8) +  /* Zeile innerhalb der 8er-Gruppe        */
+                ((uiY & 0x38) << 2) +  /* 8er-Gruppe innerhalb des 64er-Blocks  */
+                ((uiY & 0xC0) << 5);   /* welcher 64er-Block (oben/mitte/unten) */
+          pPixelRow = pPixelData + uiZ;
+          pAttrRow  = pAttrData  + uiY;
+         #elif (_PIXEL_CALC_ == 1)
+          pPixelRow = tshc_py2saddr(uiY);
+          pAttrRow  = tshc_py2aaddr(uiY);
+         #else
+          pPixelRow = tshc_py2saddr(uiY);
+          pAttrRow  = tshc_saddr2aaddr(pPixelRow);
+         #endif
 
           for (uiX = 0; uiX < pInfo->uiResX; uiX += 8)
           {
@@ -1113,17 +1114,32 @@ int makeScreenshot_L13(const screenmode_t* pInfo)
             uiAttrByte  = *(pAttrRow  + (uiX >> 3));
 
             /*
-            Bit 0:3: INK (0–F)
-            Bit 4:7: PAPER (0–F)
+            Bit 7   FLASH   (0 = normal, 1 = blinkend Vorder-/Hintergrund wechseln)
+            Bit 6   BRIGHT  (0 = normale Helligkeit, 1 = erhoehte Helligkeit)
+            Bit 5–3 PAPER   (Hintergrundfarbe, 3 Bit: 0–7)
+            Bit 2–0 INK     (Vordergrundfarbe, 3 Bit: 0–7)
             */
 
             for (uiZ = 0; uiZ < 8; ++uiZ)
             {
-              uiBmpPixel  = (uiPixelByte & (1 << (7 - uiZ)) ?
-                            (uiAttrByte & 0x0F) :       /* INK   */
-                            (uiAttrByte >> 4) & 0x0F);  /* PAPER */
+              if (uiAttrByte & FLASH)
+              {
+                uiBmpPixel = (uiPixelByte & (1 << (7 - uiZ)) ?
+                             (uiAttrByte & PAPER_WHITE) >> 3 :
+                             (uiAttrByte & INK_WHITE));
+              }
+              else
+              {
+                uiBmpPixel = (uiPixelByte & (1 << (7 - uiZ)) ?
+                             (uiAttrByte & INK_WHITE) :
+                             (uiAttrByte & PAPER_WHITE) >> 3);
+              }
+              uiBmpPixel += (uiAttrByte & BRIGHT ? 8 : 0);
 
-              pBmpLine[uiX + uiZ] = uiBmpPixel;
+              uiBmpIdx = (uiX + uiZ) >> 1;
+              pBmpLine[uiBmpIdx] = (uiX + uiZ) & 0x01 ? /* odd nibble ? */
+                                   (pBmpLine[uiBmpIdx] & 0xF0) |  uiBmpPixel :
+                                   (pBmpLine[uiBmpIdx] & 0x0F) | (uiBmpPixel << 4);
             }
           }
 
@@ -1146,7 +1162,7 @@ int makeScreenshot_L13(const screenmode_t* pInfo)
     iReturn = EINVAL;
   }
 
-  return ENOTSUP;
+  return iReturn;
 }
 
 
@@ -1530,8 +1546,10 @@ static int saveColourPalette(const screenmode_t* pInfo)
 
       if (sizeof(tEntry) != esx_f_write(g_tState.bmpfile.hFile, &tEntry, sizeof(tEntry)))
       {
+        ZXN_WRITE_REG(REG_PALETTE_INDEX,   uiPalIdx);
+        ZXN_WRITE_REG(REG_PALETTE_CONTROL, uiPalCtl);
         iReturn = EBADF;
-        break;
+        goto EXIT_PALETTE_LOOP;
       }
     }
 
@@ -1541,6 +1559,8 @@ static int saveColourPalette(const screenmode_t* pInfo)
 
     iReturn = EOK;
   }
+
+EXIT_PALETTE_LOOP:  
 
   return iReturn;
 }

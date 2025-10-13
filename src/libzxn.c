@@ -150,14 +150,16 @@ int8_t msbidx8(uint8_t uiValue)
 {
   int iReturn = 0;
 
-  if (0 == uiValue)
+  if (0 != uiValue)
   {
-    return -1; /* error: no bit set */
+    while (uiValue >>= 1)
+    {
+      ++iReturn;
+    }
   }
-
-  while (uiValue >>= 1)
+  else
   {
-    ++iReturn;
+    iReturn = -1 * EINVAL; /* error: no bit set */
   }
 
   return iReturn;
