@@ -30,5 +30,7 @@ Not for productive use at the moment - seems to work fine for default Spectrum v
 - 0.0.19  First version that creates basic LAYER 2 screenshots
 - 0.0.20  First implementation of further LAYER 2 modes (bad palette handling)
 - 0.0.21  First support for LAYER 1,1
-- 0.0.23  First release that works reliably in LAYER 0, LAYER 1,1 and LAYER 2 
+- 0.0.23  First release that works reliably in LAYER 0, LAYER 1,1 and LAYER 2
+- 0.0.24  Support for LAYER 1,3 added (Timex HiColor)
+- 0.0.25  Support for LAYER 1,2 added (Timex HiRes) 
 
