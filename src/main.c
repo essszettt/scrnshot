@@ -43,8 +43,9 @@
 #include <string.h>
 #include <malloc.h>
 #include <errno.h>
-#include <intrinsic.h>
 
+#include <z80.h>
+#include <intrinsic.h>
 #include <arch/zxn.h>
 #include <arch/zxn/esxdos.h>
 
@@ -104,11 +105,6 @@ static struct _state
   bool bForce;
 
   /*!
-  Index of the palette that will be used to create the BMP
-  */
-  uint8_t uiPalette;
-
-  /*!
   Backup: Current speed of Z80
   */
   uint8_t uiCpuSpeed;
@@ -157,7 +153,7 @@ const screenmode_t g_tScreenModes[] =
   /* --- LAYER 1 -------------------------------- */
   {0x10, 128,  96, 256,   0,   0,   0}, /* Layer 1,0 */
   {0x11, 256, 192,  16,  32,  24,   2, {0x4000, 0x1800}, {0x5800, 0x0300}}, /* Layer 1,1 */
-  {0x12, 512, 192, 256,   0,   0,   0}, /* Layer 1,2 */
+  {0x12, 512, 192,   2,   0,   0,   0, {0x4000, 0x1800}, {0x6000, 0x1800}}, /* Layer 1,2 */
   {0x13, 256, 192,  16,  32, 192,   2, {0x4000, 0x1800}, {0x6000, 0x1800}}, /* Layer 1,3 */
   /* --- LAYER 2 -------------------------------- */
   {0x20, 256, 192, 256,   0,   0,   0, {0x4000, 0x2000}, {0x0000, 0x0000}}, /* Layer 2   */
@@ -172,54 +168,73 @@ const screenmode_t g_tScreenModes[] =
   {0xFF,   0,   0,   0,   0,   0,   0} 
 };
 
-#if 0
 /*!
 BMP color palette including all spectrum layer 0 colors.
 (https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes)
 (https://lospec.com/palette-list/zx-spectrum)
+(read out from NREGs in LAYER0, LAYER 1,1)
 */
 const bmppaletteentry_t g_tColorPalL0[] =
 {
   /*--------------------------------------------*/
   /* B     G     R     A                        */
   /*--------------------------------------------*/
-  {0x00, 0x00, 0x00, 0x00},   /* black          */
-  {0xCE, 0x00, 0x01, 0x00},   /* blue           */
-  {0x00, 0x01, 0xCF, 0x00},   /* red            */
-  {0xCE, 0x01, 0xCF, 0x00},   /* magenta        */
-  {0x15, 0xCF, 0x00, 0x00},   /* green          */
-  {0xCF, 0xCF, 0x01, 0x00},   /* cyan           */
-  {0x15, 0xCF, 0xCF, 0x00},   /* yellow         */
-  {0xCF, 0xCF, 0xCF, 0x00},   /* white/grey     */
-  {0x00, 0x00, 0x00, 0x00},   /* bright black   */
-  {0xFD, 0x00, 0x02, 0x00},   /* bright blue    */
-  {0x01, 0x02, 0xFF, 0x00},   /* bright red     */
-  {0xFD, 0x02, 0xFF, 0x00},   /* bright magenta */
-  {0x1C, 0xFF, 0x00, 0x00},   /* bright green   */
-  {0xFF, 0xFF, 0x02, 0x00},   /* bright cyan    */
-  {0x1D, 0xFF, 0xFF, 0x00},   /* bright yellow  */
-  {0xFF, 0xFF, 0xFF, 0x00},   /* bright white   */
+#if 0
+  {0x00, 0x00, 0x00, 0x00}, /*  0 black         */
+  {0xCE, 0x00, 0x01, 0x00}, /*  1 blue          */
+  {0x00, 0x01, 0xCF, 0x00}, /*  2 red           */
+  {0xCE, 0x01, 0xCF, 0x00}, /*  3 magenta       */
+  {0x15, 0xCF, 0x00, 0x00}, /*  4 green         */
+  {0xCF, 0xCF, 0x01, 0x00}, /*  5 cyan          */
+  {0x15, 0xCF, 0xCF, 0x00}, /*  6 yellow        */
+  {0xCF, 0xCF, 0xCF, 0x00}, /*  7 white/grey    */
+  {0x00, 0x00, 0x00, 0x00}, /*  8 bright black  */
+  {0xFD, 0x00, 0x02, 0x00}, /*  9 bright blue   */
+  {0x01, 0x02, 0xFF, 0x00}, /* 10 bright red    */
+  {0xFD, 0x02, 0xFF, 0x00}, /* 11 bright magenta*/
+  {0x1C, 0xFF, 0x00, 0x00}, /* 12 bright green  */
+  {0xFF, 0xFF, 0x02, 0x00}, /* 13 bright cyan   */
+  {0x1D, 0xFF, 0xFF, 0x00}, /* 14 bright yellow */
+  {0xFF, 0xFF, 0xFF, 0x00}, /* 15 bright white  */
   /*--------------------------------------------*/
-  {0x00, 0x00, 0x00, 0x00},   /* black          */
-  {0xD8, 0x00, 0x00, 0x00},   /* blue           */
-  {0x00, 0x00, 0xD8, 0x00},   /* red            */
-  {0xD8, 0x00, 0xD8, 0x00},   /* magenta        */
-  {0x00, 0xD8, 0x00, 0x00},   /* green          */
-  {0xD8, 0xD8, 0x00, 0x00},   /* cyan           */
-  {0x00, 0xD8, 0xD8, 0x00},   /* yellow         */
-  {0xD8, 0xD8, 0xD8, 0x00},   /* white/grey     */
-  {0x00, 0x00, 0x00, 0x00},   /* bright black   */
-  {0xFF, 0x00, 0x00, 0x00},   /* bright blue    */
-  {0x00, 0x00, 0xFF, 0x00},   /* bright red     */
-  {0xFF, 0x00, 0xFF, 0x00},   /* bright magenta */
-  {0x00, 0xFF, 0x00, 0x00},   /* bright green   */
-  {0xFF, 0xFF, 0x00, 0x00},   /* bright cyan    */
-  {0x00, 0xFF, 0xFF, 0x00},   /* bright yellow  */
-  {0xFF, 0xFF, 0xFF, 0x00},   /* bright white   */
+  {0x00, 0x00, 0x00, 0x00}, /*  0 black         */
+  {0xD8, 0x00, 0x00, 0x00}, /*  1 blue          */
+  {0x00, 0x00, 0xD8, 0x00}, /*  2 red           */
+  {0xD8, 0x00, 0xD8, 0x00}, /*  3 magenta       */
+  {0x00, 0xD8, 0x00, 0x00}, /*  4 green         */
+  {0xD8, 0xD8, 0x00, 0x00}, /*  5 cyan          */
+  {0x00, 0xD8, 0xD8, 0x00}, /*  6 yellow        */
+  {0xD8, 0xD8, 0xD8, 0x00}, /*  7 white/grey    */
+  {0x00, 0x00, 0x00, 0x00}, /*  8 bright black  */
+  {0xFF, 0x00, 0x00, 0x00}, /*  9 bright blue   */
+  {0x00, 0x00, 0xFF, 0x00}, /* 10 bright red    */
+  {0xFF, 0x00, 0xFF, 0x00}, /* 11 bright magenta*/
+  {0x00, 0xFF, 0x00, 0x00}, /* 12 bright green  */
+  {0xFF, 0xFF, 0x00, 0x00}, /* 13 bright cyan   */
+  {0x00, 0xFF, 0xFF, 0x00}, /* 14 bright yellow */
+  {0xFF, 0xFF, 0xFF, 0x00}, /* 15 bright white  */
+  /*--------------------------------------------*/
+#endif
+  {0x00, 0x00, 0x00, 0x00}, /*  0 black         */
+  {0xB6, 0x00, 0x00, 0x00}, /*  1 blue          */
+  {0x00, 0x00, 0xB6, 0x00}, /*  2 red           */
+  {0xB6, 0x00, 0xB6, 0x00}, /*  3 magenta       */
+  {0x00, 0xB6, 0x00, 0x00}, /*  4 green         */
+  {0xB6, 0xB6, 0x00, 0x00}, /*  5 cyan          */
+  {0x00, 0xB6, 0xB6, 0x00}, /*  6 yellow        */
+  {0xB6, 0xB6, 0xB6, 0x00}, /*  7 white/grey    */
+  {0x00, 0x00, 0x00, 0x00}, /*  8 bright black  */
+  {0xFF, 0x00, 0x00, 0x00}, /*  9 bright blue   */
+  {0x00, 0x00, 0xFF, 0x00}, /* 10 bright red    */
+  {0xFF, 0x24, 0xFF, 0x00}, /* 11 bright magenta*/
+  {0x00, 0xFF, 0x00, 0x00}, /* 12 bright green  */
+  {0xFF, 0xFF, 0x00, 0x00}, /* 13 bright cyan   */
+  {0x00, 0xFF, 0xFF, 0x00}, /* 14 bright yellow */
+  {0xFF, 0xFF, 0xFF, 0x00}  /* 15 bright white  */
   /*--------------------------------------------*/
 };
-#define PALETTES (sizeof(g_tColorPalL0) / sizeof(bmppaletteentry_t) / 16)
-#endif
+
+/* TODO: Read out L0:palette from HW */
 
 /*============================================================================*/
 /*                               Strukturen                                   */
@@ -369,7 +384,6 @@ void _construct(void)
   g_tState.eAction       = ACTION_NONE;
   g_tState.bQuiet        = false;
   g_tState.bForce        = false;
-  g_tState.uiPalette     = 0;
   g_tState.iExitCode     = EOK;
   g_tState.uiCpuSpeed    = ZXN_READ_REG(REG_TURBO_MODE) & 0x03;
   g_tState.bmpfile.hFile = INV_FILE_HND;
@@ -545,21 +559,6 @@ int makeScreenshot(void)
   uint8_t uiMode = detectScreenMode();
   const screenmode_t* pInfo = getScreenModeInfo(uiMode);
 
- #ifdef __DEBUG__
-  if (0 != pInfo)
-  {
-    printf("makeScreenshot() - mode: 0x%02X resolution: %dx%d colours: %u\n",
-           uiMode,
-           pInfo->uiResX,
-           pInfo->uiResY,
-           pInfo->uiColors);
-  }
-  else
-  {
-    printf("makeScreenshot() - Unable to detect screen mode\n");
-  }
- #endif
-
   if (EOK == iReturn)
   {
     /* Is argument a directory ? */
@@ -624,21 +623,21 @@ int makeScreenshot(void)
 
     if (INV_FILE_HND == g_tState.bmpfile.hFile)
     {
-      iReturn = EACCES; /* Error */
+      iReturn = EACCES;
     }
   }
 
   if (EOK == iReturn)
   {
-    /* prepare BMP file header */
-    g_tState.bmpfile.tFileHdr.uiType      = 0x4D42;                             /* 'BM' (LE!) */
-    g_tState.bmpfile.tFileHdr.uiSize      = sizeof(g_tState.bmpfile.tFileHdr);  /* file size  */
-    g_tState.bmpfile.tFileHdr.uiSize     += sizeof(g_tState.bmpfile.tInfoHdr);
-    g_tState.bmpfile.tFileHdr.uiRes       = 0;                                  /* reserved   */
-    g_tState.bmpfile.tFileHdr.uiOffBits   = sizeof(g_tState.bmpfile.tFileHdr);  /* off bits   */
-    g_tState.bmpfile.tFileHdr.uiOffBits  += sizeof(g_tState.bmpfile.tInfoHdr);
+    /* Prepare BMP file header */
+    g_tState.bmpfile.tFileHdr.uiType         = 0x4D42;                            /* 'BM' (LE!)      */
+    g_tState.bmpfile.tFileHdr.uiSize         = sizeof(g_tState.bmpfile.tFileHdr); /* file size       */
+    g_tState.bmpfile.tFileHdr.uiSize        += sizeof(g_tState.bmpfile.tInfoHdr);
+    g_tState.bmpfile.tFileHdr.uiRes          = 0;                                 /* reserved        */
+    g_tState.bmpfile.tFileHdr.uiOffBits      = sizeof(g_tState.bmpfile.tFileHdr); /* offset bits     */
+    g_tState.bmpfile.tFileHdr.uiOffBits     += sizeof(g_tState.bmpfile.tInfoHdr);
 
-    /* prepare BMP info header  */
+    /* Prepare BMP info header  */
     g_tState.bmpfile.tInfoHdr.uiSize         = sizeof(g_tState.bmpfile.tInfoHdr); /* header size     */
     g_tState.bmpfile.tInfoHdr.uiPlanes       = 1;                                 /* only one layer  */
     g_tState.bmpfile.tInfoHdr.uiCompression  = 0;                                 /* BI_RGB          */
@@ -700,17 +699,16 @@ int makeScreenshot(void)
     }
   }
 
-  if (EOK == iReturn)
+  /* Close file */
+  if (INV_FILE_HND != g_tState.bmpfile.hFile)
   {
-    /* Close file */
     esx_f_close(g_tState.bmpfile.hFile);
     g_tState.bmpfile.hFile = INV_FILE_HND;
   }
-  else
+
+  if (EOK != iReturn)
   {
     /* Remove file */
-    esx_f_close(g_tState.bmpfile.hFile);
-    g_tState.bmpfile.hFile = INV_FILE_HND;
     esx_f_unlink(g_tState.bmpfile.acPathName);
   }
 
@@ -1014,8 +1012,139 @@ int makeScreenshot_L11(const screenmode_t* pInfo)
 /*----------------------------------------------------------------------------*/
 int makeScreenshot_L12(const screenmode_t* pInfo)
 {
-  pInfo = pInfo; /* to make the compiler happy */
-  return ENOTSUP;
+  int iReturn = EOK;
+
+  if (0 != pInfo)
+  {
+    uint16_t uiX, uiY;
+    uint16_t uiPalSize  = pInfo->uiColors * sizeof(bmppaletteentry_t);
+    uint8_t  uiLineLen  = pInfo->uiResX >> 3;   /* 32bit aligned */
+    uint32_t uiPxlSize  = ((uint32_t) uiLineLen) * ((uint32_t) pInfo->uiResY);
+
+    /*
+    The ULA used by the Timex machines provides a number of additional screen
+    modes. These are controlled using Port 0xff. An unfortunate side effect of
+    this is that a few games, like Arkanoid, which expect reading 0xff to pro-
+    duce screen and ATTR data bytes when the ULA is reading the screen memory,
+    will not work, since reading 0xff on the Timex returns the last byte sent
+    to the port. It is not known if this port is fully decoded but it seems
+    likely that it is partially decoded, as on the Spectrum. Port 0xff is also
+    used to enable/disable the timer interrupt and select which bank of memory
+    to use for the horizontal MMU. The byte to output will be interpreted thus:
+
+      Bits 0-2: Screen mode.
+                  000 - screen 0
+                  001 - screen 1
+                  010 - hi-colour
+                  110 - hi-res
+      Bits 3-5: Sets the screen colour in hi-res mode.
+                  000 - Black on White     100 - Green on Magenta
+                  001 - Blue on Yellow     101 - Cyan on Red
+                  010 - Red on Cyan        110 - Yellow on Blue
+                  011 - Magenta on Green   111 - White on Black
+      Bit 6:    If set disables the generation of the timer interrupt.
+      Bit 7:    Selects which bank the horizontal MMU should use. 0=DOCK, 1=EX-ROM.
+  
+    Screen 0 is the normal screen at 0x4000. Screen 1 uses the same format but at 0x6000.
+
+    The hi-colour screen uses the data area of screen 0 and screen 1 to create
+    a 512x192 pixel screen. Columns are taken alternately from screen 0 and
+    screen 1. The attribute area is not used. In this mode all colurs, including
+    the BORDER, are BRIGHT, and the BORDER colour is the same as the PAPER colour.
+    */
+
+    /* Create file header ... */
+    if (EOK == iReturn)
+    {
+      g_tState.bmpfile.tFileHdr.uiSize    += uiPalSize;
+      g_tState.bmpfile.tFileHdr.uiSize    += uiPxlSize;
+      g_tState.bmpfile.tFileHdr.uiOffBits += uiPalSize;
+
+      if (sizeof(g_tState.bmpfile.tFileHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tFileHdr, sizeof(g_tState.bmpfile.tFileHdr)))
+      {
+        iReturn = EBADF;
+      }
+    }
+
+    /* Create info header ... */
+    if (EOK == iReturn)
+    {
+      g_tState.bmpfile.tInfoHdr.iWidth      = pInfo->uiResX;   /* image width     */
+      g_tState.bmpfile.tInfoHdr.iHeight     = pInfo->uiResY;   /* image height    */
+      g_tState.bmpfile.tInfoHdr.uiBitCount  = 1;               /* bits per pixel  */
+      g_tState.bmpfile.tInfoHdr.uiSizeImage = uiPxlSize;       /* image size      */
+      g_tState.bmpfile.tInfoHdr.uiClrUsed   = pInfo->uiColors; /* palette entries */
+
+      if (sizeof(g_tState.bmpfile.tInfoHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tInfoHdr, sizeof(g_tState.bmpfile.tInfoHdr)))
+      {
+        iReturn = EBADF;
+      }
+    }
+
+    /* Save color palette ... */
+    if (EOK == iReturn)
+    {
+      uint8_t uiColorSet;
+      bmppaletteentry_t tPalette[2];
+
+      uiColorSet = (z80_inp(0xFF) >> 3) & 0x07;
+
+      tPalette[0] = g_tColorPalL0[15 - uiColorSet];
+      tPalette[1] = g_tColorPalL0[ 8 + uiColorSet];
+
+      if (sizeof(tPalette) != esx_f_write(g_tState.bmpfile.hFile, &tPalette, sizeof(tPalette)))
+      {
+        iReturn = EBADF;
+      }
+    }
+
+    /* Write pixel data ... */
+    if (EOK == iReturn)
+    {
+      uint8_t* pBmpLine = 0;
+
+      if (0 == (pBmpLine = malloc(uiLineLen)))
+      {
+        iReturn = ENOMEM;
+      }
+      else
+      {
+        memset(pBmpLine, 0, uiLineLen);
+
+        for (uiY = pInfo->uiResY - 1; uiY != 0xFFFF; --uiY)
+        {
+          intrinsic_di();
+
+          for (uiX = 0; uiX < pInfo->uiResX; uiX += 8)
+          {
+            /*
+            Pixeldata bytewise alternating between the two memory-banks ...
+            */
+            pBmpLine[uiX >> 3] = *tshr_pxy2saddr(uiX, uiY);
+          }
+
+          intrinsic_ei();
+
+          if (uiLineLen != esx_f_write(g_tState.bmpfile.hFile, pBmpLine, uiLineLen))
+          {
+            iReturn = EBADF;
+            goto EXIT_NESTED_LOOPS;
+          }
+        }
+
+      EXIT_NESTED_LOOPS:
+
+        free(pBmpLine);
+        pBmpLine = 0;
+      }
+    }
+  }
+  else
+  {
+    iReturn = EINVAL;
+  }
+
+  return iReturn;
 }
 
 
@@ -1607,28 +1736,3 @@ const screenmode_t* getScreenModeInfo(uint8_t uiMode)
 /*----------------------------------------------------------------------------*/
 /*                                                                            */
 /*----------------------------------------------------------------------------*/
-
-#if 0
-void read_layer2_palette(uint16_t count, uint8_t *dst) {
-  // $43: Bits 6..4 = 001 (Layer2 erste Palette), Bit7=1 (kein AutoInc beim Schreiben nötig)
-  nextreg_write(0x43, 0x80 | (0b001 << 4));
-  nextreg_write(0x40, 0);            // Index 0
-
-  for (uint16_t i=0; i<count; ++i) {
-    uint8_t c8  = nextreg_read(0x41); // RRRGGGBB
-    uint8_t ext = nextreg_read(0x44); // P..... .B
-
-    // Zusammensetzen zu 9-Bit-RGB (je 3 Bit), Priority separat, falls gewünscht:
-    uint8_t r = (c8 >> 5) & 0x07;
-    uint8_t g = (c8 >> 2) & 0x07;
-    uint8_t b = ((c8 & 0x03) << 1) | (ext & 0x01); // B2..B1 aus c8, B0 aus ext
-    uint8_t prio = (ext >> 7) & 1;                 // nur Layer2 relevant
-
-    // Beispiel: 4 Bytes pro Eintrag: R,G,B,Prio
-    *dst++ = r; *dst++ = g; *dst++ = b; *dst++ = prio;
-
-    // Nächsten Index wählen (Lesen auto-inkrementiert nicht):
-    nextreg_write(0x40, (uint8_t)(i+1));
-  }
-}
-#endif
