@@ -9,7 +9,7 @@
 |                                                                              |
 | description:                                                                 |
 |                                                                              |
-| Screenshot tools for ZX Spectrum Next (dot command)                          |
+| Screenshot tool for ZX Spectrum Next (dot command)                           |
 |                                                                              |
 +------------------------------------------------------------------------------+
 |                                                                              |
