@@ -9,7 +9,7 @@
 |                                                                              |
 | description:                                                                 |
 |                                                                              |
-| Common library for ZX Spectrum Next (maybe useful functions                  |
+| Common library for ZX Spectrum Next (maybe useful functions)                 |
 |                                                                              |
 +------------------------------------------------------------------------------+
 |                                                                              |
@@ -49,12 +49,13 @@
 /*                               Defines                                      */
 /*============================================================================*/
 /*!
-Marker for the list of valid error messages, that can be returned to BASIC.
+Marker for the enmd of the list of valid error messages, that can be returned
+to BASIC.
 */
 #define END_OF_LIST (0x7FFF)
 
 /*
-Number of the Next-register "Layer 1,0 (LoRes) Control"
+Number of the ZXN-register "Layer 1,0 (LoRes) Control" (not defined in <zxn.h>).
 */
 #define REG_L10_CONTROL (0x6A)
 
@@ -75,7 +76,14 @@ messages that can be handovered back to BASIC.
 */
 typedef struct _errentry
 {
+  /*!
+  Error code as defined in <errno.h> or project specific.
+  */
   int iCode;
+
+  /*!
+  Pointer to a textual representation of the error code.
+  */
   const unsigned char* acText;
 } errentry_t;
 
@@ -87,7 +95,9 @@ typedef struct _errentry
 /*                               Variablen                                    */
 /*============================================================================*/
 /*!
-Table to define textual error messages that are returned to NextOS/BASIC
+Table to define textual error messages that are returned to NextOS/BASIC.
+Each text-entry needs to be terminated with BIT7 set in the last character of
+the string. 
 */
 const errentry_t g_tErrTable[] =
 {

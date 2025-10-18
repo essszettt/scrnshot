@@ -9,7 +9,7 @@
 |                                                                              |
 | description:                                                                 |
 |                                                                              |
-| Common library for ZX Spectrum Next (maybe useful functions                  |
+| Common library for ZX Spectrum Next (maybe useful functions)                 |
 |                                                                              |
 +------------------------------------------------------------------------------+
 |                                                                              |
@@ -45,16 +45,34 @@
 /*============================================================================*/
 /*                               Defines                                      */
 /*============================================================================*/
+/*!
+Beginning of project specific error codes.
+*/
 #define ERROR_SPECIFIC (0x0200)
-#define EBREAK   (ERROR_SPECIFIC + 0x00)
+
+/*!
+Error code: BREAK was pressed; abort execution
+*/
+#define EBREAK (ERROR_SPECIFIC + 0x00)
+
+/*!
+Error code: Timeout in operation
+*/
 #define ETIMEOUT (ERROR_SPECIFIC + 0x01)
 
 #ifndef ERANGE
+  /*!
+  (Re)definition of error "ERANGE". Maybe just a type in <errno.h> that needs to
+  be corrected ...
+  */
   #define ERANGE __ERANGE
   #warning "ERANGE not defined in errno.h (typo ?)"
 #endif
 
 #ifndef RTM_28MHZ
+  /*!
+  Missing constant for 28-Mhz-speed of ZXN (missing in <zxn.h>)
+  */
   #define RTM_28MHZ 0x03
   #warning "RTM_28MHZ not defined in zxn.h"
 #endif
@@ -114,13 +132,17 @@ bool zxn_radastan_mode(void);
 
 /*!
 This function returns a pointer to a textual error message for the given
-error code
+error code.
+@param iCode Error code to get it's textual representation
 @return Pointer to a human readable message
 */
 const unsigned char* zxn_strerror(int iCode);
 
 /*!
 This function is used to map a physical memory address to a void pointer.
+@return Pointer to the given phsysical memory address
+@remark Sorry, can't just cast a integer literal to a pointer.
+        That's pain in my eyes ...
 */
 inline void* zxn_memmap(uint16_t uiPhysAddr)
 {
@@ -130,6 +152,8 @@ inline void* zxn_memmap(uint16_t uiPhysAddr)
 /*!
 This function detects the index of the most significant bit in an value of
 type "uint8_t"
+@param uiValue Value to compute index of most significant bit
+@return Index of the most signifikant bit
 */
 int8_t msbidx8(uint8_t uiValue);
 
