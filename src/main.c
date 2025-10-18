@@ -148,23 +148,23 @@ Spectrum Next
 */
 const screenmode_t g_tScreenModes[] =
 {
-  /* --- LAYER 0 -------------------------------- */
-  {0x00, 256, 192,  16,  32,  24,   2, {0x4000, 0x1800}, {0x5800, 0x0300}}, /* Layer 0 */
-  /* --- LAYER 1 -------------------------------- */
-  {0x10, 128,  96, 256,   0,   0,   0}, /* Layer 1,0 */
+  /* --- LAYER 0 ----------------------------------------------------------------------- */
+  {0x00, 256, 192,  16,  32,  24,   2, {0x4000, 0x1800}, {0x5800, 0x0300}}, /* Layer 0   */
+  /* --- LAYER 1 ----------------------------------------------------------------------- */
+  {0x10, 128,  96, 256,   0,   0,   0, {0x4000, 0x1800}, {0x6000, 0x1800}}, /* Layer 1,0 */
   {0x11, 256, 192,  16,  32,  24,   2, {0x4000, 0x1800}, {0x5800, 0x0300}}, /* Layer 1,1 */
   {0x12, 512, 192,   2,   0,   0,   0, {0x4000, 0x1800}, {0x6000, 0x1800}}, /* Layer 1,2 */
   {0x13, 256, 192,  16,  32, 192,   2, {0x4000, 0x1800}, {0x6000, 0x1800}}, /* Layer 1,3 */
-  /* --- LAYER 2 -------------------------------- */
+  /* --- LAYER 2 ----------------------------------------------------------------------- */
   {0x20, 256, 192, 256,   0,   0,   0, {0x4000, 0x2000}, {0x0000, 0x0000}}, /* Layer 2   */
   {0x22, 320, 256, 256,   0,   0,   0, {0x4000, 0x2000}, {0x0000, 0x0000}}, /* Layer 2,2 */
   {0x23, 640, 256,  16,   0,   0,   0, {0x4000, 0x2000}, {0x0000, 0x0000}}, /* Layer 2,3 */
-  /* --- LAYER 3 -------------------------------- */
+  /* --- LAYER 3 ----------------------------------------------------------------------- */
   {0x30, 320, 256, 256,  40,  32,   2}, /* Layer 3,0 */
   {0x31, 640, 256, 256,  80,  32,   2}, /* Layer 3,1 */
   {0x32, 320, 256, 256,  40,  32,  16}, /* Layer 3,2 */
   {0x33, 320, 256, 256,  80,  32,  16}, /* Layer 3,3 */
-  /* --- END-OF-LIST ---------------------------- */
+  /* --- END-OF-LIST ------------------------------------------------------------------- */
   {0xFF,   0,   0,   0,   0,   0,   0} 
 };
 
@@ -729,8 +729,8 @@ int makeScreenshot_L00(const screenmode_t* pInfo)
     uint16_t uiPalSize  = pInfo->uiColors * sizeof(bmppaletteentry_t);
     uint8_t  uiLineLen  = pInfo->uiResX >> 1;   /* 32bit aligned */
     uint32_t uiPxlSize  = ((uint32_t) pInfo->uiResY) * ((uint32_t) uiLineLen);
-    uint8_t* pPixelData = (uint8_t*) memmap(pInfo->tMemPixel.uiAddr);
-    uint8_t* pAttrData  = (uint8_t*) memmap(pInfo->tMemAttr.uiAddr);
+    uint8_t* pPixelData = (uint8_t*) zxn_memmap(pInfo->tMemPixel.uiAddr);
+    uint8_t* pAttrData  = (uint8_t*) zxn_memmap(pInfo->tMemAttr.uiAddr);
     uint8_t* pPixelRow  = 0;
     uint8_t* pAttrRow   = 0;
 
@@ -870,8 +870,121 @@ int makeScreenshot_L00(const screenmode_t* pInfo)
 /*----------------------------------------------------------------------------*/
 int makeScreenshot_L10(const screenmode_t* pInfo)
 {
-  pInfo = pInfo; /* to make the compiler happy */
-  return ENOTSUP;
+  int iReturn = EOK;
+
+  if (0 != pInfo)
+  {
+    uint16_t uiX, uiY;
+    bool     bRadastan = zxn_radastan_mode();
+    uint16_t uiLineLen = (bRadastan ? pInfo->uiResX >> 1 : pInfo->uiResX);
+    uint16_t uiPalSize = sizeof(bmppaletteentry_t) * (bRadastan ? pInfo->uiColors >> 4 : pInfo->uiColors);
+    uint32_t uiPxlSize = ((uint32_t) pInfo->uiResY) * ((uint32_t) uiLineLen);
+    const uint8_t* pPixelData0 = (uint8_t*) zxn_memmap(pInfo->tMemPixel.uiAddr);
+    const uint8_t* pPixelData1 = (uint8_t*) zxn_memmap(pInfo->tMemAttr.uiAddr);
+
+    /* Create file header ... */
+    if (EOK == iReturn)
+    {
+      g_tState.bmpfile.tFileHdr.uiSize    += uiPalSize;
+      g_tState.bmpfile.tFileHdr.uiSize    += uiPxlSize;
+      g_tState.bmpfile.tFileHdr.uiOffBits += uiPalSize;
+
+      if (sizeof(g_tState.bmpfile.tFileHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tFileHdr, sizeof(g_tState.bmpfile.tFileHdr)))
+      {
+        iReturn = EBADF;
+      }
+    }
+
+    /* Create info header ... */
+    if (EOK == iReturn)
+    {
+      g_tState.bmpfile.tInfoHdr.iWidth      = pInfo->uiResX;              /* image width     */
+      g_tState.bmpfile.tInfoHdr.iHeight     = pInfo->uiResY;              /* image height    */
+      g_tState.bmpfile.tInfoHdr.uiSizeImage = pInfo->uiResY * uiLineLen;  /* image size      */
+
+      if (bRadastan)
+      {
+        g_tState.bmpfile.tInfoHdr.uiBitCount = 4;                         /* bits per pixel  */
+        g_tState.bmpfile.tInfoHdr.uiClrUsed  = pInfo->uiColors >> 4;      /* palette entries */
+      }
+      else
+      {
+        g_tState.bmpfile.tInfoHdr.uiBitCount = 8;                         /* bits per pixel  */
+        g_tState.bmpfile.tInfoHdr.uiClrUsed  = pInfo->uiColors;           /* palette entries */
+      }
+
+      if (sizeof(g_tState.bmpfile.tInfoHdr) != esx_f_write(g_tState.bmpfile.hFile, &g_tState.bmpfile.tInfoHdr, sizeof(g_tState.bmpfile.tInfoHdr)))
+      {
+        iReturn = EBADF;
+      }
+    }
+
+    /* Save color palette ... */
+    if (EOK == iReturn)
+    {
+      iReturn = saveColourPalette(pInfo);
+    }
+
+    /* Write pixel data ... */
+    if (EOK == iReturn)
+    {
+      uint8_t* pBmpLine = 0;
+      uint16_t uiPixelOffset;
+      uint8_t  uiPixelByte;
+
+      if (0 == (pBmpLine = malloc(uiLineLen)))
+      {
+        iReturn = ENOMEM;
+      }
+      else
+      {
+        memset(pBmpLine, 0, uiLineLen);
+
+        for (uiY = pInfo->uiResY - 1; uiY != 0xFFFF; --uiY)
+        {
+          if (bRadastan)
+          {
+            for (uiX = 0; uiX < pInfo->uiResX; uiX += 2)
+            {
+              uiPixelOffset = uiY * pInfo->uiResX + uiX;
+              uiPixelByte = *(pPixelData0 + (uiPixelOffset >> 1));
+
+              pBmpLine[uiX >> 1] = uiPixelByte;
+            }
+          }
+          else
+          {
+            for (uiX = 0; uiX < pInfo->uiResX; ++uiX)
+            {
+              uiPixelOffset = uiY * pInfo->uiResX + uiX;
+              uiPixelByte = (pInfo->tMemPixel.uiSize > uiPixelOffset ? 
+                            *(pPixelData0 + uiPixelOffset) :
+                            *(pPixelData1 + uiPixelOffset - pInfo->tMemPixel.uiSize));
+
+              pBmpLine[uiX] = uiPixelByte;
+            }
+          }
+
+          if (uiLineLen != esx_f_write(g_tState.bmpfile.hFile, pBmpLine, uiLineLen))
+          {
+            iReturn = EBADF;
+            goto EXIT_NESTED_LOOPS;
+          }
+        }
+
+      EXIT_NESTED_LOOPS:
+
+        free(pBmpLine);
+        pBmpLine = 0;
+      }
+    }
+  }
+  else
+  {
+    iReturn = EINVAL;
+  }
+
+  return iReturn;
 }
 
 
@@ -888,8 +1001,8 @@ int makeScreenshot_L11(const screenmode_t* pInfo)
     uint16_t uiPalSize  = pInfo->uiColors * sizeof(bmppaletteentry_t);
     uint8_t  uiLineLen  = pInfo->uiResX >> 1;   /* 32bit aligned */
     uint32_t uiPxlSize  = ((uint32_t) pInfo->uiResY) * ((uint32_t) uiLineLen);
-    uint8_t* pPixelData = (uint8_t*) memmap(pInfo->tMemPixel.uiAddr);
-    uint8_t* pAttrData  = (uint8_t*) memmap(pInfo->tMemAttr.uiAddr);
+    uint8_t* pPixelData = (uint8_t*) zxn_memmap(pInfo->tMemPixel.uiAddr);
+    uint8_t* pAttrData  = (uint8_t*) zxn_memmap(pInfo->tMemAttr.uiAddr);
     uint8_t* pPixelRow  = 0;
     uint8_t* pAttrRow   = 0;
 
@@ -1161,8 +1274,8 @@ int makeScreenshot_L13(const screenmode_t* pInfo)
     uint16_t uiPalSize  = pInfo->uiColors * sizeof(bmppaletteentry_t);
     uint8_t  uiLineLen  = pInfo->uiResX >> 1;   /* 32bit aligned */
     uint32_t uiPxlSize  = ((uint32_t) pInfo->uiResY) * ((uint32_t) uiLineLen);
-    uint8_t* pPixelData = (uint8_t*) memmap(pInfo->tMemPixel.uiAddr);
-    uint8_t* pAttrData  = (uint8_t*) memmap(pInfo->tMemAttr.uiAddr);
+    uint8_t* pPixelData = (uint8_t*) zxn_memmap(pInfo->tMemPixel.uiAddr);
+    uint8_t* pAttrData  = (uint8_t*) zxn_memmap(pInfo->tMemAttr.uiAddr);
     uint8_t* pPixelRow  = 0;
     uint8_t* pAttrRow   = 0;
 
@@ -1306,7 +1419,7 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
   {
     uint16_t uiPalSize = pInfo->uiColors * sizeof(bmppaletteentry_t);
     uint32_t uiPxlSize = ((uint32_t) pInfo->uiResY) * ((uint32_t) pInfo->uiResX);
-    uint8_t* pPixelRow = 0;
+    const uint8_t* pPixelRow = 0;
 
     /* Create file header ... */
     if (EOK == iReturn)
@@ -1401,7 +1514,7 @@ int makeScreenshot_L20(const screenmode_t* pInfo)
           uiPhysBank_ = ((uint16_t) uiPhysBank);
         }
 
-        pPixelRow = ((const uint8_t*) memmap(pInfo->tMemPixel.uiAddr)) + (uiPhysAddr & 0x1FFF); 
+        pPixelRow = ((const uint8_t*) zxn_memmap(pInfo->tMemPixel.uiAddr)) + (uiPhysAddr & 0x1FFF); 
 
         if (pInfo->uiResX != esx_f_write(g_tState.bmpfile.hFile, pPixelRow, pInfo->uiResX))
         {
@@ -1524,7 +1637,7 @@ int makeScreenshot_L23(const screenmode_t* pInfo)
         uint16_t uiPhysBank_ = 0xFFFF;
         uint32_t uiPhysBase;
         uint32_t uiPhysAddr;
-        const uint8_t* pVirtBase = (const uint8_t*) memmap(pInfo->tMemPixel.uiAddr);
+        const uint8_t* pVirtBase = (const uint8_t*) zxn_memmap(pInfo->tMemPixel.uiAddr);
 
         uiPhysBank = ZXN_READ_REG(0x12) * 2; /* 0x12 L2.ACTIVE.RAM.BANK | 16K bank => 8K bank*/
         uiPhysBase = UINT32_C(0x2000) * ((uint32_t) uiPhysBank);  
@@ -1628,9 +1741,16 @@ static int saveColourPalette(const screenmode_t* pInfo)
   {
     bmppaletteentry_t tEntry = {.a = 0x00};
     uint16_t uiValue;
-    uint8_t uiPalIdx;
-    uint8_t uiPalCtl;
-    uint8_t uiPalAct;
+    uint8_t  uiPalIdx;
+    uint8_t  uiPalCtl;
+    uint8_t  uiPalAct;
+    uint16_t uiColors = pInfo->uiColors;
+
+    /* Only LAYER 1,0: Detect number of colours */
+    if ((0x10 == pInfo->uiMode) && zxn_radastan_mode())
+    {
+      uiColors = 16;
+    }
 
     /* Status sichern, um nichts zu verstellen */
     uiPalIdx = ZXN_READ_REG(REG_PALETTE_INDEX  );
@@ -1640,7 +1760,7 @@ static int saveColourPalette(const screenmode_t* pInfo)
     switch ((pInfo->uiMode >> 4) & 0x0F)
     {
       case 0:
-      case 1: /* 1. 000, 2. 100 */
+      case 1: /* 1.Pal 000, 2.Pal 100 */
         uiPalAct = (uiPalCtl >> 1) & 0x01;
         uiValue  = (uiPalCtl & 0x8F) | ((uiPalAct ? 0x04 : 0x00) << 4);
         break;
@@ -1657,7 +1777,8 @@ static int saveColourPalette(const screenmode_t* pInfo)
     /* Select active palette */
     ZXN_WRITE_REG(REG_PALETTE_CONTROL, uiValue);
 
-    for (uint16_t i = 0; i < pInfo->uiColors; ++i)
+    /* Write palette entries */
+    for (uint16_t i = 0; i < uiColors; ++i)
     {
       /* Palettenindex auswaehlen */
       ZXN_WRITE_REG(REG_PALETTE_INDEX, i);

@@ -40,6 +40,7 @@
 /*                               Includes                                     */
 /*============================================================================*/
 #include <stdint.h>
+#include <stdbool.h>
 
 /*============================================================================*/
 /*                               Defines                                      */
@@ -82,15 +83,6 @@ With this macro the value of a variable can be limited to the given interval.
 /*============================================================================*/
 /*                               Typ-Definitionen                             */
 /*============================================================================*/
-/*!
-Structure to describe a entry of the global table with all valid error codes and
-messages that can be handovered back to BASIC.
-*/
-typedef struct _errentry
-{
-  int iCode;
-  const unsigned char* acText;
-} errentry_t;
 
 /*============================================================================*/
 /*                               Prototypen                                   */
@@ -114,6 +106,13 @@ void zxn_border_fastcall(uint8_t uiColour) __z88dk_fastcall;
 #define zxn_border(x) zxn_border_fastcall(x)
 
 /*!
+This function detects, if Radastan mode is active or not
+(LAYER 1,0 with 16 colours).
+@return "true" = Radastan mode active; "false" = Radastan mode not active
+*/
+bool zxn_radastan_mode(void);
+
+/*!
 This function returns a pointer to a textual error message for the given
 error code
 @return Pointer to a human readable message
@@ -123,7 +122,10 @@ const unsigned char* zxn_strerror(int iCode);
 /*!
 This function is used to map a physical memory address to a void pointer.
 */
-void* memmap(uint16_t uiPhysAddr);
+inline void* zxn_memmap(uint16_t uiPhysAddr)
+{
+  return ((void*) uiPhysAddr);
+}
 
 /*!
 This function detects the index of the most significant bit in an value of
