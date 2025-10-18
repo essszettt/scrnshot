@@ -5,7 +5,7 @@
     /____/\___/_/  /_/ /_/____/_/ /_/\____/\__/  
                                              
 
-Creating screenshots for ZX Spectrum Next (dot command)
+Creating screenshots on ZX Spectrum Next (dot command)
 
 This tool can be called from BASIC or the command line to take screenshots in BMP format.
 
