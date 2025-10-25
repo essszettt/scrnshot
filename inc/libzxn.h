@@ -82,6 +82,16 @@ With this macro the value of a variable can be limited to the given interval.
 */
 #define constrain(val, min, max) (val <= min ? min : val >= max ? max : val)
 
+/*!
+This macro can be used like "printf" but it's implementation is only compiled
+and linked in debug-builds ("#define __DEBUG__").
+*/
+#ifdef __DEBUG__
+  #define DBGPRINTF(...) do { (void) printf(__VA_ARGS__); } while (0)
+#else
+  #define DBGPRINTF(...) do { } while (0)
+#endif
+
 /*============================================================================*/
 /*                               Namespaces                                   */
 /*============================================================================*/
