@@ -101,28 +101,28 @@ the string.
 */
 const errentry_t g_tErrTable[] =
 {
-  {EOK,         "no erro\xF2"},                      /* 'r' | 0x80 */
-  {EACCES,      "access denie\xE4"},                 /* 'd' | 0x80 */
-  {EBADF,       "bad fil\xE5"},                      /* 'e' | 0x80 */
-  {EBDFD,       "bad file descripto\xF2"},           /* 'r' | 0x80 */
-  {EDOM,        "out of domain of functio\xEE"},     /* 'n' | 0x80 */
-  {EFBIG,       "file too larg\xE5"},                /* 'e' | 0x80 */
-  {EINVAL,      "invalid valu\xE5"},                 /* 'e' | 0x80 */
-  {EMFILE,      "too many open file\xE5"},           /* 'e' | 0x80 */
+  {EOK,         "no erro"                   "\xF2"}, /* 'r' | 0x80 */
+  {EACCES,      "access denie"              "\xE4"}, /* 'd' | 0x80 */
+  {EBADF,       "bad fil"                   "\xE5"}, /* 'e' | 0x80 */
+  {EBDFD,       "bad file descripto"        "\xF2"}, /* 'r' | 0x80 */
+  {EDOM,        "out of domain of functio"  "\xEE"}, /* 'n' | 0x80 */
+  {EFBIG,       "file too larg"             "\xE5"}, /* 'e' | 0x80 */
+  {EINVAL,      "invalid valu"              "\xE5"}, /* 'e' | 0x80 */
+  {EMFILE,      "too many open file"        "\xE5"}, /* 'e' | 0x80 */
   {ENFILE,      "too many open files in syste\xED"}, /* 'm' | 0x80 */
-  {ENOLCK,      "no locks availabl\xE5"},            /* 'e' | 0x80 */
-  {ENOMEM,      "out of me\xED"},                    /* 'm' | 0x80 */
-  {ENOTSUP,     "not supporte\xE4"},                 /* 'd' | 0x80 */
-  {EOVERFLOW,   "overflo\xEF"},                      /* 'w' | 0x80 */
-  {ERANGE,      "out of rang\xE5"},                  /* 'e' | 0x80 */
-  {ESTAT,       "bad stat\xF4"},                     /* 't' | 0x80 */
-  {EAGAIN,      "resource temp. unavailabl\xE5"},    /* 'e' | 0x80 */
-  {EWOULDBLOCK, "operation would bloc\xEB"},         /* 'k' | 0x80 */
+  {ENOLCK,      "no locks availabl"         "\xE5"}, /* 'e' | 0x80 */
+  {ENOMEM,      "out of me"                 "\xED"}, /* 'm' | 0x80 */
+  {ENOTSUP,     "not supporte"              "\xE4"}, /* 'd' | 0x80 */
+  {EOVERFLOW,   "overflo"                   "\xEF"}, /* 'w' | 0x80 */
+  {ERANGE,      "out of rang"               "\xE5"}, /* 'e' | 0x80 */
+  {ESTAT,       "bad stat"                  "\xF4"}, /* 't' | 0x80 */
+  {EAGAIN,      "resource temp. unavailabl" "\xE5"}, /* 'e' | 0x80 */
+  {EWOULDBLOCK, "operation would bloc"      "\xEB"}, /* 'k' | 0x80 */
   /* ---------------- APPLICATION SPECIFIC ----------------------- */
-  {EBREAK,      "D BREAK - no repea\xF4"},           /* 't' | 0x80 */
-  {ETIMEOUT,    "timeout erro\xF2"},                 /* 'r' | 0x80 */
+  {EBREAK,      "D BREAK - no repea"        "\xF4"}, /* 't' | 0x80 */
+  {ETIMEOUT,    "timeout erro"              "\xF2"}, /* 'r' | 0x80 */
   /* ---------------- END-OF-LIST -------------------------------- */
-  {END_OF_LIST, "unknown erro\xF2"}                  /* 'r' | 0x80 */
+  {END_OF_LIST, "unknown erro"              "\xF2"}  /* 'r' | 0x80 */
 };
 
 /*============================================================================*/

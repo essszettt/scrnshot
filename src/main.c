@@ -395,8 +395,8 @@ void _construct(void)
 
   esx_f_getcwd(g_tState.bmpfile.acPathName);
 
-  memset(&g_tState.bmpfile.tFileHdr, sizeof(g_tState.bmpfile.tFileHdr), 0);
-  memset(&g_tState.bmpfile.tInfoHdr, sizeof(g_tState.bmpfile.tInfoHdr), 0);
+  memset(&g_tState.bmpfile.tFileHdr, 0, sizeof(g_tState.bmpfile.tFileHdr));
+  memset(&g_tState.bmpfile.tInfoHdr, 0, sizeof(g_tState.bmpfile.tInfoHdr));
 
   ZXN_NEXTREG(REG_TURBO_MODE, RTM_28MHZ);
 
@@ -1792,7 +1792,7 @@ EXIT_PALETTE_LOOP:
 uint8_t detectScreenMode(void)
 {
   struct esx_mode tMode;
-  memset(&tMode, sizeof(tMode), 0);
+  memset(&tMode, 0, sizeof(tMode));
 
   if (0 == esx_ide_mode_get(&tMode))
   {
