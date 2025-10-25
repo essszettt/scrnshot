@@ -117,7 +117,7 @@ static struct _state
   /*!
   Structure of all information of the BMP output file
   */
-  struct
+  struct _bmpfile
   {
     /*!
     Pathname of the output file
@@ -411,6 +411,12 @@ void _destruct(void)
 {
   if (g_tState.bInitialized)
   {
+    if (INV_FILE_HND != g_tState.bmpfile.hFile)
+    {
+      (void) esx_f_close(g_tState.bmpfile.hFile);
+      g_tState.bmpfile.hFile = INV_FILE_HND;
+    }
+
     ZXN_NEXTREGA(REG_TURBO_MODE, g_tState.uiCpuSpeed);
   }
 }
@@ -707,14 +713,14 @@ int makeScreenshot(void)
   /* Close file */
   if (INV_FILE_HND != g_tState.bmpfile.hFile)
   {
-    esx_f_close(g_tState.bmpfile.hFile);
+    (void) esx_f_close(g_tState.bmpfile.hFile);
     g_tState.bmpfile.hFile = INV_FILE_HND;
   }
 
   if (EOK != iReturn)
   {
     /* Remove file */
-    esx_f_unlink(g_tState.bmpfile.acPathName);
+    (void) esx_f_unlink(g_tState.bmpfile.acPathName);
   }
 
   return iReturn;
