@@ -13,23 +13,16 @@ This tool can be called from BASIC or the command line to take screenshots in BM
 Following layers are supported at the moment:
 
 * LAYER 0 (256 x 192 x 16 colours)
-
 * LAYER 1,0 (Timex LoRes: 128 x 92 x 16/256 colours)
-
 * LAYER 1,1 (256 x 192 x 16 colours)
-
 * LAYER 1,2 (Timex HiRes: 512 x 192 x 2 colours)
-
 * LAYER 1,3 (Timex HiColor: 256 x 192 x 16 colours)
-
 * LAYER 2,0 (256 x 192 x 256 colours)
-
 
 
 Mixing of different active layers is not supported at the moment (will be added in future releases).
 
-
-
+Development is done using z88dk (version 2.4) and Visual Studio Code on Windows. 
 
 
 ---
