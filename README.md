@@ -3,15 +3,34 @@
       \__ \/ ___/ ___/ __ \\__ \/ __ \/ __ \/ __/
      ___/ / /__/ /  / / / /__/ / / / / /_/ / /_  
     /____/\___/_/  /_/ /_/____/_/ /_/\____/\__/  
-                                             
 
 Creating screenshots on ZX Spectrum Next (dot command)
 
 This tool can be called from BASIC or the command line to take screenshots in BMP format.
 
-Not for productive use at the moment - seems to work fine for default Spectrum video mode (and LAYER 1,0, LAYER 1,1, LAYER 1,2, LAYER 1,3, LAYER 2). Playing around with z88dk functions to optimize pixel calculations ...
 
-=> Version 0.1.0 will be the first complete release ;-)
+
+Following layers are supported at the moment:
+
+* LAYER 0 (256 x 192 x 16 colours)
+
+* LAYER 1,0 (Timex LoRes: 128 x 92 x 16/256 colours)
+
+* LAYER 1,1 (256 x 192 x 16 colours)
+
+* LAYER 1,2 (Timex HiRes: 512 x 192 x 2 colours)
+
+* LAYER 1,3 (Timex HiColor: 256 x 192 x 16 colours)
+
+* LAYER 2,0 (256 x 192 x 256 colours)
+
+
+
+Mixing of different active layers is not supported at the moment (will be added in future releases).
+
+
+
+
 
 ---
 
@@ -32,4 +51,3 @@ Not for productive use at the moment - seems to work fine for default Spectrum v
 - 0.0.24  Support for LAYER 1,3 added (Timex HiColor)
 - 0.0.25  Support for LAYER 1,2 added (Timex HiRes)
 - 0.0.26  Support for LAYER 1,0 added (Timex LoRes)
-
