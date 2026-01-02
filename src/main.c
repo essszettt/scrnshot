@@ -43,7 +43,6 @@
 #include <string.h>
 #include <malloc.h>
 #include <errno.h>
-
 #include <z80.h>
 #include <intrinsic.h>
 #include <arch/zxn.h>
@@ -390,7 +389,7 @@ void _construct(void)
   g_tState.bQuiet        = false;
   g_tState.bForce        = false;
   g_tState.iExitCode     = EOK;
-  g_tState.uiCpuSpeed    = ZXN_READ_REG(REG_TURBO_MODE) & 0x03;
+  g_tState.uiCpuSpeed    = zxn_getspeed();
   g_tState.bmpfile.hFile = INV_FILE_HND;
 
   esx_f_getcwd(g_tState.bmpfile.acPathName);
@@ -398,7 +397,7 @@ void _construct(void)
   memset(&g_tState.bmpfile.tFileHdr, 0, sizeof(g_tState.bmpfile.tFileHdr));
   memset(&g_tState.bmpfile.tInfoHdr, 0, sizeof(g_tState.bmpfile.tInfoHdr));
 
-  ZXN_NEXTREG(REG_TURBO_MODE, RTM_28MHZ);
+  zxn_setspeed(RTM_28MHZ);
 
   g_tState.bInitialized  = true;
 }
@@ -417,7 +416,8 @@ void _destruct(void)
       g_tState.bmpfile.hFile = INV_FILE_HND;
     }
 
-    ZXN_NEXTREGA(REG_TURBO_MODE, g_tState.uiCpuSpeed);
+    zxn_setspeed(g_tState.uiCpuSpeed);
+    g_tState.bInitialized = false;
   }
 }
 
@@ -555,13 +555,26 @@ int showHelp(void)
 /*----------------------------------------------------------------------------*/
 int showInfo(void)
 {
-  unsigned char acAppName[0x10];
-  strncpy(acAppName, VER_INTERNALNAME_STR, sizeof(acAppName));
-  strupr(acAppName);
+  uint16_t uiVersion;
+  char_t acBuffer[0x10];
 
-  printf("%s " VER_LEGALCOPYRIGHT_STR "\n", acAppName);
+  strncpy(acBuffer, VER_INTERNALNAME_STR, sizeof(acBuffer));
+  strupr(acBuffer);
+  printf("%s " VER_LEGALCOPYRIGHT_STR "\n", acBuffer);
+
+  if (ESX_DOSVERSION_NEXTOS_48K != (uiVersion = esx_m_dosversion()))
+  {
+    snprintf(acBuffer, sizeof(acBuffer), "NextOS %u.%02u",
+             ESX_DOSVERSION_NEXTOS_MAJOR(uiVersion),
+             ESX_DOSVERSION_NEXTOS_MINOR(uiVersion));
+  }
+  else
+  {
+    strncpy(acBuffer, "48K mode", sizeof(acBuffer));
+  }
+
   /*      0.........1.........2.........3. */
-  printf(" Version %s\n", VER_FILEVERSION_STR);
+  printf(" Version %s (%s)\n", VER_FILEVERSION_STR, acBuffer);
   printf(" Stefan Zell (info@diezells.de)\n");
 
   return EOK;

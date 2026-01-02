@@ -1,19 +1,19 @@
 /*-----------------------------------------------------------------------------+
 |                                                                              |
-| filename: libzxn.c                                                           |
-| project:  ZX Spectrum Next - Common functions                                |
-| author:   Stefan Zell                                                        |
-| date:     09/09/2025                                                         |
+| filename: zxn_normalizepath.c                                                |
+| project:  ZX Spectrum Next - libzxn                                          |
+| author:   S. Zell                                                            |
+| date:     12/20/2025                                                         |
 |                                                                              |
 +------------------------------------------------------------------------------+
 |                                                                              |
 | description:                                                                 |
 |                                                                              |
-| Common library for ZX Spectrum Next (maybe useful functions)                 |
+| Function to normalize a path                                                 |
 |                                                                              |
 +------------------------------------------------------------------------------+
 |                                                                              |
-| Copyright (c) 09/09/2025 STZ Engineering                                     |
+| Copyright (c) 12/20/2025 STZ Engineering                                     |
 |                                                                              |
 | This software is provided  "as is",  without warranty of any kind, express   |
 | or implied. In no event shall STZ or its contributors be held liable for any |
@@ -37,30 +37,24 @@
 /*                               Includes                                     */
 /*============================================================================*/
 #include <stdint.h>
-#include <stdlib.h>
 #include <errno.h>
-
-#include <arch/zxn.h>
-#include <arch/zxn/esxdos.h>
-
+#include <ctype.h>
 #include "libzxn.h"
 
 /*============================================================================*/
 /*                               Defines                                      */
 /*============================================================================*/
-/*!
-Marker for the enmd of the list of valid error messages, that can be returned
-to BASIC.
-*/
-#define END_OF_LIST (0x7FFF)
-
-/*
-Number of the ZXN-register "Layer 1,0 (LoRes) Control" (not defined in <zxn.h>).
-*/
-#define REG_L10_CONTROL (0x6A)
 
 /*============================================================================*/
 /*                               Namespaces                                   */
+/*============================================================================*/
+
+/*============================================================================*/
+/*                               Konstanten                                   */
+/*============================================================================*/
+
+/*============================================================================*/
+/*                               Variablen                                    */
 /*============================================================================*/
 
 /*============================================================================*/
@@ -70,60 +64,6 @@ Number of the ZXN-register "Layer 1,0 (LoRes) Control" (not defined in <zxn.h>).
 /*============================================================================*/
 /*                               Typ-Definitionen                             */
 /*============================================================================*/
-/*!
-Structure to describe a entry of the global table with all valid error codes and
-messages that can be handovered back to BASIC.
-*/
-typedef struct _errentry
-{
-  /*!
-  Error code as defined in <errno.h> or project specific.
-  */
-  int iCode;
-
-  /*!
-  Pointer to a textual representation of the error code.
-  */
-  const unsigned char* acText;
-} errentry_t;
-
-/*============================================================================*/
-/*                               Konstanten                                   */
-/*============================================================================*/
-
-/*============================================================================*/
-/*                               Variablen                                    */
-/*============================================================================*/
-/*!
-Table to define textual error messages that are returned to NextOS/BASIC.
-Each text-entry needs to be terminated with BIT7 set in the last character of
-the string. 
-*/
-const errentry_t g_tErrTable[] =
-{
-  {EOK,         "no erro"                   "\xF2"}, /* 'r' | 0x80 */
-  {EACCES,      "access denie"              "\xE4"}, /* 'd' | 0x80 */
-  {EBADF,       "bad fil"                   "\xE5"}, /* 'e' | 0x80 */
-  {EBDFD,       "bad file descripto"        "\xF2"}, /* 'r' | 0x80 */
-  {EDOM,        "out of domain of functio"  "\xEE"}, /* 'n' | 0x80 */
-  {EFBIG,       "file too larg"             "\xE5"}, /* 'e' | 0x80 */
-  {EINVAL,      "invalid valu"              "\xE5"}, /* 'e' | 0x80 */
-  {EMFILE,      "too many open file"        "\xE5"}, /* 'e' | 0x80 */
-  {ENFILE,      "too many open files in syste\xED"}, /* 'm' | 0x80 */
-  {ENOLCK,      "no locks availabl"         "\xE5"}, /* 'e' | 0x80 */
-  {ENOMEM,      "out of me"                 "\xED"}, /* 'm' | 0x80 */
-  {ENOTSUP,     "not supporte"              "\xE4"}, /* 'd' | 0x80 */
-  {EOVERFLOW,   "overflo"                   "\xEF"}, /* 'w' | 0x80 */
-  {ERANGE,      "out of rang"               "\xE5"}, /* 'e' | 0x80 */
-  {ESTAT,       "bad stat"                  "\xF4"}, /* 't' | 0x80 */
-  {EAGAIN,      "resource temp. unavailabl" "\xE5"}, /* 'e' | 0x80 */
-  {EWOULDBLOCK, "operation would bloc"      "\xEB"}, /* 'k' | 0x80 */
-  /* ---------------- APPLICATION SPECIFIC ----------------------- */
-  {EBREAK,      "D BREAK - no repea"        "\xF4"}, /* 't' | 0x80 */
-  {ETIMEOUT,    "timeout erro"              "\xF2"}, /* 'r' | 0x80 */
-  /* ---------------- END-OF-LIST -------------------------------- */
-  {END_OF_LIST, "unknown erro"              "\xF2"}  /* 'r' | 0x80 */
-};
 
 /*============================================================================*/
 /*                               Prototypen                                   */
@@ -138,55 +78,72 @@ const errentry_t g_tErrTable[] =
 /*============================================================================*/
 
 /*----------------------------------------------------------------------------*/
-/* zxn_radastan_mode()                                                        */
+/* zxn_normalizepath()                                                        */
 /*----------------------------------------------------------------------------*/
-bool zxn_radastan_mode(void)
+int zxn_normalizepath(char_t* acPath)
 {
-  return (0 != ((ZXN_READ_REG(REG_L10_CONTROL) >> 5) & 0x01));
-}
+  /*
+  ZX Spectrum Next Pfad-Normalisierung (in-place, joinbar)
+  - '\\' => '/'
+  - doppelte '/' zu einem '/'
+  - trailing '/' entfernen (ausser bei "/" => "/.")
+  - "/" wird zu "/."   (joinbar, aber bleibt im Root)
+  - "X:/" wird zu "X:"
+  Rueckgabe: EOK oder EINVAL bei Fehler.
+  */
 
-
-/*----------------------------------------------------------------------------*/
-/* zxn_strerror()                                                             */
-/*----------------------------------------------------------------------------*/
-const unsigned char* zxn_strerror(int iCode)
-{
-  const errentry_t* pIndex = g_tErrTable;
-
-  while (END_OF_LIST != pIndex->iCode)
+  if (NULL == acPath)
   {
-    if (iCode == pIndex->iCode)
+    return EINVAL;
+  }
+
+  /* 1) '\' => '/' und doppelte '/' entfernen */
+  size_t r = 0, w = 0;
+  while ('\0' != acPath[r])
+  {
+    char c = acPath[r++];
+
+    if ('\\' == c)
     {
-      break;
+      c = '/';
     }
 
-    ++pIndex;
-  }
-
-  return pIndex->acText;
-}
-
-
-/*----------------------------------------------------------------------------*/
-/* msbidx8()                                                                  */
-/*----------------------------------------------------------------------------*/
-int8_t msbidx8(uint8_t uiValue)
-{
-  int iReturn = 0;
-
-  if (0 != uiValue)
-  {
-    while (uiValue >>= 1)
+    if ('/' == c)
     {
-      ++iReturn;
+      if ((0 < w) && ('/' == acPath[w - 1]))
+      {
+        continue;
+      }
     }
-  }
-  else
-  {
-    iReturn = -1 * EINVAL; /* error: no bit set */
+
+    acPath[w++] = c;
   }
 
-  return iReturn;
+  acPath[w] = '\0';
+
+  /* 2) Spezialfaelle fuer "joinbare" Basen */
+  if ((1 == w) && ('/' == acPath[0]))
+  {
+    /* "/" => "/." */
+    acPath[1] = '.';
+    acPath[2] = '\0';
+    return EOK;
+  }
+
+  if ((3 == w) && isalpha((unsigned char) acPath[0]) && (':' == acPath[1]) && ('/' == acPath[2]))
+  {
+    /* "X:/" => "X:" */
+    acPath[2] = '\0';
+    return EOK;
+  }
+
+  /* 3) Allgemein: trailing '/' entfernen */
+  while ((0 < w) && ('/' == acPath[w - 1]))
+  {
+    acPath[--w] = '\0';
+  }
+
+  return EOK;
 }
 
 
