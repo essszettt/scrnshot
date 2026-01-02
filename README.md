@@ -45,3 +45,4 @@ Development is done using z88dk (version 2.4) and Visual Studio Code on Windows.
 - 0.0.25  Support for LAYER 1,2 added (Timex HiRes)
 - 0.0.26  Support for LAYER 1,0 added (Timex LoRes)
 - 0.1.0   First official release
+- 0.1.1   Using common functions as static library ("libzxn")
