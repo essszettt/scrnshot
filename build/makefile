@@ -1,3 +1,5 @@
+.PHONY: all clean push
+
 ### Target Platform ####################
 TARGET := zxn
 
@@ -7,7 +9,12 @@ APPNAME := scrnshot
 ### Binary type ########################
 APPTYPE := dotn
 
-### OS specific settings ###############
+### C-Runtime-Type #####################
+CRTTYPE := 30
+
+### Tool Commands ######################
+CC := zcc
+
 ifeq ($(OS),Windows_NT)
 RM := rm -f
 MV := mv -f
@@ -16,6 +23,8 @@ RM := rm -f
 MV := mv -f
 endif
 
+HDF := hdfmonkey
+
 ### Build Type #########################
 BUILD ?= release
 
@@ -23,17 +32,15 @@ BUILD ?= release
 SRC_DIR := ../src
 INC_DIR := ../inc
 BLD_DIR := .
-LIB_DIR := ../lib
+LIB_DIR := $(if $(wildcard ../../../lib),../../../lib,../lib)
 
 ### Source Files #######################
 SRCS := $(SRC_DIR)/main.c
 
 ### Compiler Flags #####################
-CFLAGS := -compiler=sdcc --vc -clib=sdcc_iy -SO3 --opt-code-size -I$(INC_DIR) -pragma-include:$(INC_DIR)/zpragma.inc
+CFLAGS := -compiler=sdcc --vc -clib=sdcc_iy -SO3 --opt-code-size -pragma-include:$(INC_DIR)/zpragma.inc
+CFLAGS += -I$(INC_DIR)
 CFLAGS += -I$(LIB_DIR)/libzxn/inc
-
-# Select CRT
-CFLAGS += -startup=30
 
 # verbose output
 # CFLAGS += -v
@@ -50,7 +57,7 @@ CFLAGS += --max-allocs-per-node200000
 endif
 
 ### Linker Flags #######################
-LDFLAGS := -subtype=$(APPTYPE) -Cz"--clean" -create-app -o $(BLD_DIR)/$(APPNAME) 
+LDFLAGS := -subtype=$(APPTYPE) -startup=$(CRTTYPE) -Cz"--clean" -create-app -o $(BLD_DIR)/$(APPNAME) 
 LDFLAGS += -L$(LIB_DIR)/libzxn/build -llibzxn
 
 ifeq ($(BUILD), debug)
@@ -60,9 +67,6 @@ LDFLAGS += -m
 # create symbol files
 LDFLAGS += -s
 endif
-
-### Compiler Command ###################
-CC := zcc
 
 ### Build Target #######################
 all: libzxn
@@ -76,6 +80,10 @@ endif
 
 libzxn:
 	$(MAKE) -C $(LIB_DIR)/libzxn/build BUILD=$(BUILD)
+
+### Push to emulator image #############
+push:
+	$(HDF) put "$(ZXN_IMAGE_PATH)/$(ZXN_IMAGE_NAME)" $(APPNAME) "/dot"
 
 ### Cleanup Build Files ################
 clean:

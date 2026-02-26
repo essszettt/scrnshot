@@ -121,7 +121,7 @@ static struct _state
     /*!
     Pathname of the output file
     */
-    char acPathName[ESX_PATHNAME_MAX];
+    char_t acPathName[ESX_PATHNAME_MAX];
 
     /*!
     Handle of the open BMP file while writing
@@ -261,7 +261,7 @@ void _destruct(void);
 Diese Funktion interpretiert alle Argumente, die der Anwendung uebergeben
 wurden.
 */
-int parseArguments(int argc, char* argv[]);
+int parseArguments(int argc, char_t* argv[]);
 
 /*!
 Ausgabe der Hilfe dieser Anwendung.
@@ -385,21 +385,24 @@ static inline uint8_t rgb3_to_8(uint8_t v)
 /*----------------------------------------------------------------------------*/
 void _construct(void)
 {
-  g_tState.eAction       = ACTION_NONE;
-  g_tState.bQuiet        = false;
-  g_tState.bForce        = false;
-  g_tState.iExitCode     = EOK;
-  g_tState.uiCpuSpeed    = zxn_getspeed();
-  g_tState.bmpfile.hFile = INV_FILE_HND;
+  if (!g_tState.bInitialized)
+  {
+    g_tState.eAction       = ACTION_NONE;
+    g_tState.bQuiet        = false;
+    g_tState.bForce        = false;
+    g_tState.iExitCode     = EOK;
+    g_tState.uiCpuSpeed    = zxn_getspeed();
+    g_tState.bmpfile.hFile = INV_FILE_HND;
 
-  esx_f_getcwd(g_tState.bmpfile.acPathName);
+    esx_f_getcwd(g_tState.bmpfile.acPathName);
 
-  memset(&g_tState.bmpfile.tFileHdr, 0, sizeof(g_tState.bmpfile.tFileHdr));
-  memset(&g_tState.bmpfile.tInfoHdr, 0, sizeof(g_tState.bmpfile.tInfoHdr));
+    memset(&g_tState.bmpfile.tFileHdr, 0, sizeof(g_tState.bmpfile.tFileHdr));
+    memset(&g_tState.bmpfile.tInfoHdr, 0, sizeof(g_tState.bmpfile.tInfoHdr));
 
-  zxn_setspeed(RTM_28MHZ);
+    zxn_setspeed(RTM_28MHZ);
 
-  g_tState.bInitialized  = true;
+    g_tState.bInitialized  = true;
+  }
 }
 
 
@@ -462,7 +465,7 @@ int main(int argc, char* argv[])
 /*----------------------------------------------------------------------------*/
 /* parseArguments()                                                           */
 /*----------------------------------------------------------------------------*/
-int parseArguments(int argc, char* argv[])
+int parseArguments(int argc, char_t* argv[])
 {
   int iReturn = EOK;
 
@@ -472,7 +475,7 @@ int parseArguments(int argc, char* argv[])
 
   while (i < argc)
   {
-    const char* acArg = argv[i];
+    const char_t* acArg = argv[i];
 
     if ('-' == acArg[0])
     {
@@ -532,7 +535,7 @@ int parseArguments(int argc, char* argv[])
 /*----------------------------------------------------------------------------*/
 int showHelp(void)
 {
-  unsigned char acAppName[0x10];
+  char_t acAppName[0x10];
   strncpy(acAppName, VER_INTERNALNAME_STR, sizeof(acAppName));
   strupr(acAppName);
 
@@ -597,7 +600,7 @@ int makeScreenshot(void)
     if (INV_FILE_HND != (g_tState.bmpfile.hFile = esx_f_opendir(g_tState.bmpfile.acPathName)))
     {
       uint16_t uiIndex = 0;
-      char acPathName[ESX_PATHNAME_MAX];
+      char_t acPathName[ESX_PATHNAME_MAX];
 
       esx_f_closedir(g_tState.bmpfile.hFile);
       g_tState.bmpfile.hFile = INV_FILE_HND;
