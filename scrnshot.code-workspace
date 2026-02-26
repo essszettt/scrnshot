@@ -1,0 +1,30 @@
+{
+	"folders": [
+		{
+			"name": "MAIN",
+			"path": "."
+		},
+		{
+			"name": "LIB",
+			"path": "../../lib"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"zxn.h": "c",
+			"errno.h": "c",
+			"stdlib.h": "c",
+			"z80.h": "c",
+			"input.h": "c",
+			"stdio.h": "c",
+			"zxn_utils.h": "c",
+			"esxdos.h": "c",
+			"sysvar.h": "c",
+			"libgen.h": "c",
+			"arch.h": "c",
+			"stddef.h": "c",
+			"rect.h": "c",
+			"intrinsic.h": "c"
+		}
+	}
+}
