@@ -1,2 +1,7 @@
 build/*.o
+build/*.lis
+build/*.map
+build/*.sym
 doc/L??/*
+src/*.lis
+src/*.sym
