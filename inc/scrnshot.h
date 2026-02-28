@@ -43,6 +43,19 @@
 /*============================================================================*/
 /*                               Defines                                      */
 /*============================================================================*/
+/*!
+With this macro it can be controlled wether the pixel calculations should be
+done by the functions from "zxn.h" or not ...
+  - 0 = calculate pixeladdress the hard way (bit-fiddling in C)
+  - 1 = calculate pixeladdress with function from z88dk-newlib
+  - 2 = calculate pixeladdress with PIXELAD opcode
+  - 3 = calculate pixeladdress with PIXELAD and bit-fiddling
+*/
+#define _PIXEL_CALC_ 3
+
+/*!
+Default-resolution of the created BMP files
+*/
 #define BMP_DPI_72 (2835)
 
 /*============================================================================*/
@@ -140,9 +153,96 @@ typedef struct _screenmode
   memregion_t tMemAttr;
 } screenmode_t;
 
+/*!
+*/
+/*!
+In dieser Struktur werden alle globalen Daten der Anwendung gespeichert.
+*/
+typedef struct _appstate
+{
+  /*!
+  If this flag is set, then this structure is initialized
+  */
+  bool bInitialized;
+
+  /*!
+  Action to execute (help, version, sreenshot, ...)
+  */
+  action_t eAction;
+
+  /*!
+  If this flag is set, no messages are printed to the console while creating a
+  screenshot.
+  */
+  bool bQuiet;
+
+  /*!
+  If this flag is set, existing output files are overwritten
+  */
+  bool bForce;
+
+  /*!
+  Backup: Current speed of Z80
+  */
+  uint8_t uiCpuSpeed;
+
+  /*!
+  Exitcode of the application, that is handovered to BASIC
+  */
+  int iExitCode;
+
+  /*!
+  Structure of all information of the BMP output file
+  */
+  struct _bmpfile
+  {
+    /*!
+    Pathname of the output file
+    */
+    char_t acPathName[ESX_PATHNAME_MAX];
+
+    /*!
+    Handle of the open BMP file while writing
+    */
+    uint8_t hFile;
+
+    /*!
+    File header of the BMP file
+    */
+    bmpfileheader_t tFileHdr;
+
+    /*!
+    Info header of the BMO file
+    */
+    bmpinfoheader_t tInfoHdr;
+  } bmpfile;
+
+} appstate_t;
+
 /*============================================================================*/
 /*                               Prototypen                                   */
 /*============================================================================*/
+/*!
+This function saves the predefined BMP header to the already opened file
+@return "EOK" = no error
+*/
+int saveImageHeader(void);
+
+/*!
+This function reads the current colour palette from NREGs and saves it to the
+already opened BMP file.
+@return "EOK" = no error
+*/
+int saveColourPalette(const screenmode_t* pInfo);
+
+/*!
+Convert a RGB3 value to a corresponding RGB8 value
+3-Bit (0..7) -> 8-Bit (0..255): "bit replicate"
+*/
+inline uint8_t rgb3_to_rgb8(uint8_t v)
+{
+  return (uint8_t)((v << 5) | (v << 2) | (v >> 1));  // 0,36,73,109,146,182,219,255
+}
 
 /*============================================================================*/
 /*                               Klassen                                      */
