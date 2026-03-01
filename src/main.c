@@ -214,17 +214,6 @@ specialized functions for the active video-/screenmode.
 */
 int makeScreenshot(void);
 
-/*!
-This function tries to detect the current screen mode (layer 0, layer 1, ...)
-*/
-uint8_t detectScreenMode(void);
-
-/*!
-This function returns a pointer to a structure of prperties of the given
-video-/screenmode
-*/
-const screenmode_t* getScreenModeInfo(uint8_t uiMode);
-
 /*============================================================================*/
 /*                               Klassen                                      */
 /*============================================================================*/

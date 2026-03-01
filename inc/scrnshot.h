@@ -223,6 +223,17 @@ typedef struct _appstate
 /*                               Prototypen                                   */
 /*============================================================================*/
 /*!
+This function tries to detect the current screen mode (layer 0, layer 1, ...)
+*/
+uint8_t detectScreenMode(void);
+
+/*!
+This function returns a pointer to a structure of prperties of the given
+video-/screenmode
+*/
+const screenmode_t* getScreenModeInfo(uint8_t uiMode);
+
+/*!
 This function saves the predefined BMP header to the already opened file
 @return "EOK" = no error
 */
