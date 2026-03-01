@@ -321,19 +321,19 @@ int parseArguments(int argc, char_t* argv[])
 
     if ('-' == acArg[0])
     {
-      if ((0 == stricmp(acArg, "-h")) /* || (0 == stricmp(acArg, "--help")) */)
+      if ((0 == stricmp(acArg, "-h")) || (0 == stricmp(acArg, "--help")))
       {
         g_tState.eAction = ACTION_HELP;
       }
-      else if ((0 == strcmp(acArg, "-v")) /* || (0 == stricmp(acArg, "--version")) */)
+      else if ((0 == strcmp(acArg, "-v")) || (0 == stricmp(acArg, "--version")))
       {
         g_tState.eAction = ACTION_INFO;
       }
-      else if ((0 == strcmp(acArg, "-q")) /* || (0 == stricmp(acArg, "--quiet")) */)
+      else if ((0 == strcmp(acArg, "-q")) || (0 == stricmp(acArg, "--quiet")))
       {
         g_tState.bQuiet = true;
       }
-      else if ((0 == strcmp(acArg, "-f")) /* || (0 == stricmp(acArg, "--force")) */)
+      else if ((0 == strcmp(acArg, "-f")) || (0 == stricmp(acArg, "--force")))
       {
         g_tState.bForce = true;
       }
